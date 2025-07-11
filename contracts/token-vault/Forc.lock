@@ -1,0 +1,18 @@
+[[package]]
+name = "src6"
+version = "0.8.0"
+source = "registry+src6?0.8.0#QmSh7UzDFupJyH1puURyeyV7aqRchuHsL9YQFmbahyavZo!"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+version = "0.68.9"
+source = "registry+std?0.68.9#QmUaBxMs2JvY1bXgRCdeCsG3o6TN82ftRgv4Tq7ytqUGUT!"
+
+[[package]]
+name = "token_vault"
+source = "member"
+dependencies = [
+    "src6",
+    "std",
+]

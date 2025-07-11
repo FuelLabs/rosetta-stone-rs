@@ -1,0 +1,9 @@
+[[package]]
+name = "multi_asset_transfer"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+version = "0.68.9"
+source = "registry+std?0.68.9#QmUaBxMs2JvY1bXgRCdeCsG3o6TN82ftRgv4Tq7ytqUGUT!"
