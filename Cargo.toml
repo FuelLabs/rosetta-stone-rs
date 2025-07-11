@@ -7,10 +7,17 @@ authors = ["Nazeeh Vahora <nazeeh.xyz@gmail.com>"]
 license = "Apache-2.0"
 
 [dev-dependencies]
-fuels = "0.70.0"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
-[[test]]
-harness = true
-name = "integration_tests"
-path = "tests/harness.rs"
+[dependencies]
+fuels = "0.70.0"
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+
+[[bin]]
+name = "deploy"
+path = "examples/deploy.rs"
+
+[[bin]]
+name = "interact"
+path = "examples/interact.rs"
