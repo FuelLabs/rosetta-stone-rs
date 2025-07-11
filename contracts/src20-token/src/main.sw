@@ -12,6 +12,7 @@ use std::{
     constants::DEFAULT_SUB_ID,
     context::msg_amount,
     string::String,
+    logging::log,
 };
  
 configurable {
@@ -71,6 +72,7 @@ impl SRC3 for Contract {
         storage.total_supply.write(new_supply);
  
         mint_to(recipient, DEFAULT_SUB_ID, amount);
+        log("Assets minted successfully");
  
         TotalSupplyEvent::new(AssetId::default(), new_supply, msg_sender().unwrap())
             .log();
@@ -124,6 +126,7 @@ impl SRC3 for Contract {
         storage.total_supply.write(new_supply);
  
         burn(DEFAULT_SUB_ID, amount);
+        log("Assets burned successfully");
  
         TotalSupplyEvent::new(AssetId::default(), new_supply, msg_sender().unwrap())
             .log();

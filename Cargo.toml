@@ -14,10 +14,9 @@ fuels = "0.70.0"
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 
-[[bin]]
-name = "deploy"
-path = "examples/deploy.rs"
 
-[[bin]]
-name = "interact"
-path = "examples/interact.rs"
+
+[[test]]
+harness = true
+name = "integration_tests"
+path = "tests/src20_tests/harness.rs"
