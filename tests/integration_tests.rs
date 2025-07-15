@@ -9,7 +9,7 @@ use fuels::{
         prelude::*,
     };
 
-use fuels::prelude::WalletUnlocked;
+use fuels::accounts::wallet::Unlocked;  
 
 // Load abi from json
 abigen!(
@@ -48,29 +48,29 @@ async fn test_complete_rosetta_stone_workflow() {
     let user2_wallet = wallets.pop().unwrap();
     let user3_wallet = wallets.pop().unwrap();
 
-    let src20_token_instance = deploy_src20_token(&admin_wallet, "MYTOKEN", "TOKEN", 9)
+    let src20_token_instance = deploy_src20_token(admin_wallet.clone(), "MYTOKEN", "TOKEN", 9)
         .await
         .unwrap();
 
     let ethereum_token_contract_id = src20_token_instance.contract_id();
 
-    let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, &user1_wallet);
+    let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, user1_wallet.clone());
 
-    let token_vault_instance = deploy_token_vault(&admin_wallet, &src20_contract_instance)
+    let token_vault_instance = deploy_token_vault(admin_wallet.clone(), src20_contract_instance.clone())
         .await
         .unwrap();
 
     // Basic token operations
-    let _ = test_token_operations(&src20_contract_instance, &admin_wallet, &user1_wallet).await;
+    let _ = test_token_operations(src20_contract_instance.clone(), admin_wallet.clone(), user1_wallet.clone()).await;
 
     // Multi-wallet interactions
     // This function tests minting tokens to multiple wallets and can be expanded for more complex interactions
     // like transfers, approvals, etc.
     // It currently mints tokens to user1, user2, and user3 wallets.
     let __ = test_multi_wallet_interactions(
-        &src20_contract_instance,
-        &admin_wallet,
-        &[&user1_wallet, &user2_wallet, &user3_wallet],
+        src20_contract_instance,
+        admin_wallet,
+        vec![user1_wallet, user2_wallet, user3_wallet],
     )
     .await;
 
@@ -84,11 +84,11 @@ async fn test_complete_rosetta_stone_workflow() {
 }
 
 async fn deploy_src20_token(
-    wallet: &WalletUnlocked,
+    wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
     symbol: &str,
     decimals: u8,
-) -> Result<Src20Token<WalletUnlocked>> {
+) -> Result<Src20Token<Wallet<Unlocked<PrivateKeySigner>>>> {
     let name_bytes: SizedAsciiString<7> = name.try_into()?;
     let symbol_bytes: SizedAsciiString<5> = symbol.try_into()?;
 
@@ -102,7 +102,7 @@ async fn deploy_src20_token(
         "contracts/src20-token/out/debug/src20_token.bin",
         LoadConfiguration::default().with_configurables(configurables),
     )?
-    .deploy(wallet, TxPolicies::default())
+    .deploy(&wallet, TxPolicies::default())
     .await?;
 
     let contract_id = deploy_response.contract_id;
@@ -117,9 +117,9 @@ async fn deploy_src20_token(
 }
 
 async fn deploy_token_vault(
-    wallet: &WalletUnlocked,
-    token_contract: &Src20Token<WalletUnlocked>,
-) -> Result<TokenVault<WalletUnlocked>> {
+    wallet: Wallet<Unlocked<PrivateKeySigner>>,
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+) -> Result<TokenVault<Wallet<Unlocked<PrivateKeySigner>>>> {
     let configurables = TokenVaultConfigurables::default()
         .with_TOKEN_CONTRACT(ContractId::from(token_contract.contract_id()))?
         .with_ADMIN(Identity::Address(wallet.address().into()))?;
@@ -128,7 +128,7 @@ async fn deploy_token_vault(
         "contracts/token-vault/out/debug/token_vault.bin",
         LoadConfiguration::default().with_configurables(configurables),
     )?
-    .deploy(wallet, TxPolicies::default())
+    .deploy(&wallet, TxPolicies::default())
     .await?;
 
     let contract_id = deploy_response.contract_id;
@@ -140,9 +140,9 @@ async fn deploy_token_vault(
 }
 
 async fn test_token_operations(
-    token_contract: &Src20Token<WalletUnlocked>,
-    admin_wallet: &WalletUnlocked,
-    user_wallet: &WalletUnlocked,
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+    user_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<()> {
     println!("🧪 Testing token operations...");
 
@@ -191,9 +191,9 @@ async fn test_token_operations(
 }
 
 async fn test_multi_wallet_interactions(
-    token_contract: &Src20Token<WalletUnlocked>,
-    admin_wallet: &WalletUnlocked,
-    user_wallets: &[&WalletUnlocked],
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+    user_wallets: Vec<Wallet<Unlocked<PrivateKeySigner>>>,
 ) -> Result<()> {
     println!("🧪 Testing multi-wallet interactions...");
 
@@ -203,7 +203,7 @@ async fn test_multi_wallet_interactions(
         let recipient = Identity::Address(user_wallet.address().into());
 
         // Create admin contract instance for minting
-        let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet);
+        let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
         println!(
             "🔄 Attempting to mint {} tokens to user {}: {:?}",
@@ -268,8 +268,8 @@ async fn test_multi_wallet_interactions(
 
     println!("🔄 Running assertions...");
 
-    assert_eq!(sender_balance, 1_000_000 - transfer_amount);
-    assert_eq!(recipient_balance, 1_001_000 + transfer_amount);
+    assert_eq!(sender_balance, (1_000_000u128 - transfer_amount as u128));
+    assert_eq!(recipient_balance, (1_001_000u128 + transfer_amount as u128));
 
     println!("✅ All assertions passed!");
 
