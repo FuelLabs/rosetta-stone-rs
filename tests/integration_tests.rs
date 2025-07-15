@@ -186,7 +186,7 @@ async fn test_token_operations(
     assert!(!mint_logs.results.is_empty(), "Should have mint logs");
 
     // Calculate the correct asset ID from contract ID and sub ID
-    let asset_id = AssetId::from(*token_contract.contract_id());
+    let asset_id = admin_token_contract.methods().get_asset_id().call().await?.value;
 
     // Query the total supply after minting.
     let total_supply = token_contract
