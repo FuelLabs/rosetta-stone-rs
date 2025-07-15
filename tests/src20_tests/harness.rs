@@ -7,19 +7,19 @@ abigen!(Contract(
 ));
 
 async fn get_contract_instance() -> (Src20Token<WalletUnlocked>, ContractId) {
-
     // This helper launches a local node and provides 10 test wallets linked to it.
-let num_wallets = 5;
-let coins_per_wallet = 4;
-let amount_per_coin = 100;
-let config = WalletsConfig::new(
-    Some(num_wallets),
-    Some(coins_per_wallet),
-    Some(amount_per_coin),
-);
-// Launches a local node and provides test wallets as specified by the config.
-let mut wallets = launch_custom_provider_and_get_wallets(config, None, None).await.unwrap();
-
+    let num_wallets = 5;
+    let coins_per_wallet = 4;
+    let amount_per_coin = 100;
+    let config = WalletsConfig::new(
+        Some(num_wallets),
+        Some(coins_per_wallet),
+        Some(amount_per_coin),
+    );
+    // Launches a local node and provides test wallets as specified by the config.
+    let mut wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
 
     let wallet = wallets.pop().unwrap();
 

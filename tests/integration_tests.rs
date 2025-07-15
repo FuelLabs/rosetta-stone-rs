@@ -223,6 +223,49 @@ async fn test_multi_wallet_interactions(
         println!("✅ Mint transaction successful for user {}!", i + 1);
     }
     println!("✅ Multi-wallet interactions test passed");
+    println!("intiaiting transfer");
+
+    let transfer_amount = 50_000;
+    let token_asset_id = AssetId::new(*token_contract.contract_id().hash());
+
+    println!("🔄 About to transfer {} tokens", transfer_amount);
+    println!("From: {}", user_wallets[0].address());
+    println!("To: {}", user_wallets[1].address());
+    println!("Asset ID: {:?}", token_asset_id);
+
+    // Add explicit error handling
+    match user_wallets[0]
+        .transfer(
+            user_wallets[1].address(),
+            transfer_amount,
+            token_asset_id,
+            TxPolicies::default(),
+        )
+        .await
+    {
+        Ok(tx_result) => {
+            println!("✅ Transfer successful! Transaction: {:?}", tx_result);
+        }
+        Err(e) => {
+            println!("❌ Transfer failed: {:?}", e);
+            return Err(e);
+        }
+    }
+
+    println!("🔄 Checking balances...");
+
+    // Verify transfer
+    let sender_balance = user_wallets[0].get_asset_balance(&token_asset_id).await?;
+    let recipient_balance = user_wallets[1].get_asset_balance(&token_asset_id).await?;
+
+    println!(
+        "Sender balance after transfer: {}, Recipient balance after transfer: {}",
+        sender_balance, recipient_balance
+    );
+
+    assert_eq!(sender_balance, TOKEN_AMOUNT - transfer_amount);
+    assert_eq!(recipient_balance, TOKEN_AMOUNT * 2 + transfer_amount);
+    
     Ok(())
 }
 
