@@ -40,7 +40,8 @@ async fn test_complete_rosetta_stone_workflow() {
     );
     // Launches a local node and provides test wallets as specified by the config.
     let mut wallets = launch_custom_provider_and_get_wallets(config, None, None)
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let admin_wallet = wallets.pop().unwrap();
     let user1_wallet = wallets.pop().unwrap();
