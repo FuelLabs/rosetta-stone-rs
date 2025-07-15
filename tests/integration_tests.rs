@@ -1,9 +1,13 @@
-use fuels::{prelude::*, types::ContractId, types::SizedAsciiString, types::Identity};
+use fuels::{prelude::*, types::ContractId, types::Identity, types::SizedAsciiString};
 
 // Load abi from json
 abigen!(Contract(
     name = "Src20Token",
-    abi = "contracts/src20-token/out/debug/src20_token-abi.json"
+    abi = "contracts/src20-token/out/debug/src20_token-abi.json",
+),
+Contract(
+    name = "TokenVault",
+    abi = "contracts/token-vault/out/debug/token_vault-abi.json",
 ));
 
 const TOKEN_AMOUNT: u64 = 1_000_000;
@@ -20,43 +24,46 @@ async fn get_contract_instance() {
         Some(amount_per_coin),
     );
     // Launches a local node and provides test wallets as specified by the config.
-    let mut wallets = launch_custom_provider_and_get_wallets(config, None, None).await.unwrap();
+    let mut wallets = launch_custom_provider_and_get_wallets(config, None, None)
+        .await
+        .unwrap();
 
     let admin_wallet = wallets.pop().unwrap();
     let user1_wallet = wallets.pop().unwrap();
     let user2_wallet = wallets.pop().unwrap();
     let user3_wallet = wallets.pop().unwrap();
 
-    let src20_token_instance = deploy_src20_token(
-        &admin_wallet,
-        "MYTOKEN", 
-        "TOKEN",
-        9,
-    ).await.unwrap();
-    
+    let src20_token_instance = deploy_src20_token(&admin_wallet, "MYTOKEN", "TOKEN", 9)
+        .await
+        .unwrap();
+
     let ethereum_token_contract_id = src20_token_instance.contract_id();
 
-    let instance = Src20Token::new(ethereum_token_contract_id, user1_wallet);
+    let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, user1_wallet);
 
+    let token_vault_instance = deploy_token_vault(&admin_wallet, &src20_contract_instance)
+        .await
+        .unwrap();
+
+        // Ok((src20_contract_instance, token_vault_instance))
     // Use the instance and contract_id here if needed, or just drop them.
     // For now, do nothing to satisfy the () return type.
 }
 
 async fn deploy_src20_token(
     wallet: &WalletUnlocked,
-    name: &str,        // 🆕 Pass as string
-    symbol: &str,      // 🆕 Pass as string  
+    name: &str,   // 🆕 Pass as string
+    symbol: &str, // 🆕 Pass as string
     decimals: u8,
 ) -> Result<Src20Token<WalletUnlocked>> {
-    
     // 🔄 Convert strings to byte arrays
     let name_bytes: SizedAsciiString<7> = name.try_into()?;
     // Max 12 bytes
     let symbol_bytes: SizedAsciiString<5> = symbol.try_into()?;
 
     let configurables = Src20TokenConfigurables::default()
-        .with_NAME(name_bytes.clone())?      // 🎯 Use converted bytes
-        .with_SYMBOL(symbol_bytes.clone())?  // 🎯 Use converted bytes
+        .with_NAME(name_bytes.clone())? // 🎯 Use converted bytes
+        .with_SYMBOL(symbol_bytes.clone())? // 🎯 Use converted bytes
         .with_DECIMALS(decimals)?
         .with_ADMIN(Identity::Address(wallet.address().into()))?; // 🆕 Set admin to wallet address
 
@@ -67,8 +74,35 @@ async fn deploy_src20_token(
     .deploy(wallet, TxPolicies::default())
     .await?;
 
-    println!("✅ Token '{}' ({}) deployed at: {}", name, symbol, contract_id.hash());
+    println!(
+        "✅ Token '{}' ({}) deployed at: {}",
+        name,
+        symbol,
+        contract_id.hash()
+    );
     Result::Ok(Src20Token::new(contract_id.clone(), wallet.clone()))
+}
+
+async fn deploy_token_vault(
+    wallet: &WalletUnlocked,
+    token_contract: &Src20Token<WalletUnlocked>,
+) -> Result<TokenVault<WalletUnlocked>> {
+    let configurables = TokenVaultConfigurables::default()
+        .with_TOKEN_CONTRACT(ContractId::from(token_contract.contract_id()))?
+        .with_ADMIN(Identity::Address(wallet.address().into()))?; // 🆕 Set admin to wallet address
+
+    let contract_id = Contract::load_from(
+        "contracts/token-vault/out/debug/token_vault.bin",
+        LoadConfiguration::default().with_configurables(configurables),
+    )?
+    .deploy(wallet, TxPolicies::default())
+    .await?;
+
+    let token_vault_instance = TokenVault::new(contract_id.clone(), wallet.clone());
+
+
+    println!("✅ Token Vault deployed at: {}", contract_id.hash());
+    Result::Ok(token_vault_instance)
 }
 
 // [[bin]]
