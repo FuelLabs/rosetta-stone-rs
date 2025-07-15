@@ -1,19 +1,23 @@
-use fuels::{prelude::*, types::ContractId, types::Identity, types::SizedAsciiString};
+use fuels::{prelude::*, types::{AssetId, Bits256, ContractId, Identity, SizedAsciiString}};
 
 // Load abi from json
-abigen!(Contract(
-    name = "Src20Token",
-    abi = "contracts/src20-token/out/debug/src20_token-abi.json",
-),
-Contract(
-    name = "TokenVault",
-    abi = "contracts/token-vault/out/debug/token_vault-abi.json",
-));
+abigen!(
+    Contract(
+        name = "Src20Token",
+        abi = "contracts/src20-token/out/debug/src20_token-abi.json",
+    ),
+    Contract(
+        name = "TokenVault",
+        abi = "contracts/token-vault/out/debug/token_vault-abi.json",
+    )
+);
 
 const TOKEN_AMOUNT: u64 = 1_000_000;
+const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
+const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
 #[tokio::test]
-async fn get_contract_instance() {
+async fn test_complete_rosetta_stone_workflow() {
     // This helper launches a local node and provides 10 test wallets linked to it.
     let num_wallets = 5;
     let coins_per_wallet = 4;
@@ -39,15 +43,22 @@ async fn get_contract_instance() {
 
     let ethereum_token_contract_id = src20_token_instance.contract_id();
 
-    let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, user1_wallet);
+    let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, user1_wallet.clone());
 
     let token_vault_instance = deploy_token_vault(&admin_wallet, &src20_contract_instance)
         .await
         .unwrap();
 
-        // Ok((src20_contract_instance, token_vault_instance))
-    // Use the instance and contract_id here if needed, or just drop them.
-    // For now, do nothing to satisfy the () return type.
+    assert_ne!(
+        token_vault_instance.contract_id().hash().to_string(),
+        ContractId::default().to_string(),
+        "Token vault contract ID should not be the default (all zeros)"
+    );
+
+    // Basic token operations
+    let _ = test_token_operations(&src20_contract_instance, &admin_wallet, &user1_wallet).await;
+
+    println!("🎉 All tests passed successfully!");
 }
 
 async fn deploy_src20_token(
@@ -100,9 +111,39 @@ async fn deploy_token_vault(
 
     let token_vault_instance = TokenVault::new(contract_id.clone(), wallet.clone());
 
-
     println!("✅ Token Vault deployed at: {}", contract_id.hash());
     Result::Ok(token_vault_instance)
+}
+
+async fn test_token_operations(
+    token_contract: &Src20Token<WalletUnlocked>,
+    admin_wallet: &WalletUnlocked,
+    user_wallet: &WalletUnlocked,
+) -> Result<()> {
+    println!("🧪 Testing token operations...");
+    // Mint tokens to the user wallet
+    let mint_amount = TOKEN_AMOUNT;
+    let recipient = Identity::Address(user_wallet.address().into());
+
+    let mint_tx = token_contract
+        .methods()
+        // .mint(recipient, Some(AssetId::zeroed().into()), mint_amount)
+        .mint(recipient, Some(SUB_ID), mint_amount)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+        .call()
+        .await?;
+
+        // Verify mint logs
+    let mint_logs = mint_tx.decode_logs();
+
+    assert!(!mint_logs.results.is_empty(), "Should have mint logs");
+
+    // Check total supply after minting
+    let total_supply = token_contract.methods().total_supply(AssetId::default()).call().await?.value;
+    assert_eq!(total_supply, Some(mint_amount));
+
+    println!("✅ Token operations test passed");
+    Ok(())
 }
 
 // [[bin]]
