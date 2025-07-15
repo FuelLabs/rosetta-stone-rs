@@ -32,7 +32,6 @@ async fn get_contract_instance() {
         "MYTOKEN", 
         "TOKEN",
         9,
-        120_000_000
     ).await.unwrap();
     
     let ethereum_token_contract_id = src20_token_instance.contract_id();
@@ -48,7 +47,6 @@ async fn deploy_src20_token(
     name: &str,        // 🆕 Pass as string
     symbol: &str,      // 🆕 Pass as string  
     decimals: u8,
-    initial_supply: u64,
 ) -> Result<Src20Token<WalletUnlocked>> {
     
     // 🔄 Convert strings to byte arrays
@@ -59,7 +57,8 @@ async fn deploy_src20_token(
     let configurables = Src20TokenConfigurables::default()
         .with_NAME(name_bytes.clone())?      // 🎯 Use converted bytes
         .with_SYMBOL(symbol_bytes.clone())?  // 🎯 Use converted bytes
-        .with_DECIMALS(decimals)?;
+        .with_DECIMALS(decimals)?
+        .with_ADMIN(Identity::Address(wallet.address().into()))?; // 🆕 Set admin to wallet address
 
     let contract_id = Contract::load_from(
         "contracts/src20-token/out/debug/src20_token.bin",

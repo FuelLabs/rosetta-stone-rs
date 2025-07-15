@@ -26,9 +26,7 @@ configurable {
     NAME: str[7] = __to_str_array("MyAsset"),
     /// The symbol of the asset minted by this contract.
     SYMBOL: str[5] = __to_str_array("MYTKN"),
-    /// The initial supply of the asset minted by this contract.
-    INITIAL_SUPPLY: u64 = 1_000_000_000,
-    /// The admin of the contract (can mint/burn tokens).
+   /// The admin of the contract (can mint/burn tokens).
     ADMIN: Identity = Identity::Address(Address::zero()),
 }
 
