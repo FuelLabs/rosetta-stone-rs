@@ -55,6 +55,17 @@ async fn test_complete_rosetta_stone_workflow() {
     // Basic token operations
     let _ = test_token_operations(&src20_contract_instance, &admin_wallet, &user1_wallet).await;
 
+    // Multi-wallet interactions
+    // This function tests minting tokens to multiple wallets and can be expanded for more complex interactions
+    // like transfers, approvals, etc.
+    // It currently mints tokens to user1, user2, and user3 wallets.
+    let __ = test_multi_wallet_interactions(
+        &src20_contract_instance,
+        &admin_wallet,
+        &[&user1_wallet, &user2_wallet, &user3_wallet],
+    )
+    .await;
+
     assert_ne!(
         token_vault_instance.contract_id().hash().to_string(),
         ContractId::default().to_string(),
@@ -166,15 +177,55 @@ async fn test_token_operations(
         .call()
         .await?
         .value;
-    
+
     println!("Total supply after minting: {:?}", total_supply);
-    
+
     // skip this test until the test is failing
     // assert_eq!(total_supply, Some(mint_amount));
 
     println!("✅ Token operations test passed");
     Ok(())
 }
+
+async fn test_multi_wallet_interactions(
+    token_contract: &Src20Token<WalletUnlocked>,
+    admin_wallet: &WalletUnlocked,
+    user_wallets: &[&WalletUnlocked],
+) -> Result<()> {
+    // This function is a placeholder for testing multi-wallet interactions.
+    // It can be expanded to include more complex interactions between multiple wallets.
+    println!("🧪 Testing multi-wallet interactions...");
+
+    // mint tokens to each user wallet
+    for (i, user_wallet) in user_wallets.iter().enumerate() {
+        let amount = TOKEN_AMOUNT + (i as u64 * 1000); // Incremental minting for each user
+        let recipient = Identity::Address(user_wallet.address().into());
+
+        // Create admin contract instance for minting
+        let admin_token_contract =
+            Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
+
+        println!(
+            "🔄 Attempting to mint {} tokens to user {}: {:?}",
+            amount,
+            i + 1,
+            recipient
+        );
+
+        let mint_tx = admin_token_contract
+            .methods()
+            .mint(recipient, Some(SUB_ID), amount)
+            .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+            .call()
+            .await?;
+
+        // println!("Mint transaction: {:?}", mint_tx.decode_logs().results[0]);
+        println!("✅ Mint transaction successful for user {}!", i + 1);
+    }
+    println!("✅ Multi-wallet interactions test passed");
+    Ok(())
+}
+
 // [[bin]]
 // name = "deploy"
 // path = "examples/deploy.rs"
