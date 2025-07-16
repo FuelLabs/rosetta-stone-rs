@@ -1,15 +1,11 @@
-
 use fuels::{
-        accounts::{
-            signers::{derivation::DEFAULT_DERIVATION_PATH, private_key::PrivateKeySigner},
-   
-        },
-        types::{AssetId, Bits256, ContractId, Identity, SizedAsciiString},
-        crypto::SecretKey,
-        prelude::*,
-    };
+    accounts::signers::{derivation::DEFAULT_DERIVATION_PATH, private_key::PrivateKeySigner},
+    crypto::SecretKey,
+    prelude::*,
+    types::{AssetId, Bits256, ContractId, Identity, SizedAsciiString},
+};
 
-use fuels::accounts::wallet::Unlocked;  
+use fuels::accounts::wallet::Unlocked;
 
 // Load abi from json
 abigen!(
@@ -63,18 +59,32 @@ async fn test_complete_rosetta_stone_workflow() {
     let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, user1_wallet.clone());
 
     // Deploy the token vault contract, passing the admin wallet and token contract instance.
-    let token_vault_instance = deploy_token_vault(admin_wallet.clone(), src20_contract_instance.clone())
-        .await
-        .unwrap();
+    let token_vault_instance =
+        deploy_token_vault(admin_wallet.clone(), src20_contract_instance.clone())
+            .await
+            .unwrap();
 
     // Run basic token operations test (minting, supply checks, etc.).
-    let _ = test_token_operations(src20_contract_instance.clone(), admin_wallet.clone(), user1_wallet.clone()).await;
+    let _ = test_token_operations(
+        src20_contract_instance.clone(),
+        admin_wallet.clone(),
+        user1_wallet.clone(),
+    )
+    .await;
 
     // Run multi-wallet interaction test (minting to multiple users, transfers, etc.).
     let __ = test_multi_wallet_interactions(
-        src20_contract_instance,
-        admin_wallet,
-        vec![user1_wallet, user2_wallet, user3_wallet],
+        src20_contract_instance.clone(),
+        admin_wallet.clone(),
+        vec![user1_wallet.clone(), user2_wallet, user3_wallet],
+    )
+    .await;
+
+    let ___ = test_cross_contract_calls(
+        src20_contract_instance.clone(),
+        admin_wallet.clone(),
+        token_vault_instance.clone(),
+        user1_wallet.clone(),
     )
     .await;
 
@@ -186,7 +196,12 @@ async fn test_token_operations(
     assert!(!mint_logs.results.is_empty(), "Should have mint logs");
 
     // Calculate the correct asset ID from contract ID and sub ID
-    let asset_id = admin_token_contract.methods().get_asset_id().call().await?.value;
+    let asset_id = admin_token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
 
     // Query the total supply after minting.
     let total_supply = token_contract
@@ -212,7 +227,8 @@ async fn test_multi_wallet_interactions(
     user_wallets: Vec<Wallet<Unlocked<PrivateKeySigner>>>,
 ) -> Result<()> {
     println!("🧪 Testing multi-wallet interactions...");
-    let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
+    let admin_token_contract =
+        Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
     // Mint tokens to each user wallet in the list.
     for (i, user_wallet) in user_wallets.iter().enumerate() {
@@ -245,8 +261,13 @@ async fn test_multi_wallet_interactions(
     println!("initiating transfer");
 
     let transfer_amount = 50_000;
-    // let token_asset_id = AssetId::from(*token_contract.contract_id());
-    let asset_id = admin_token_contract.methods().get_asset_id().call().await?.value;
+
+    let asset_id = admin_token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
 
     println!("🔄 About to transfer {} tokens", transfer_amount);
     println!("From: {}", user_wallets[0].address());
@@ -292,6 +313,86 @@ async fn test_multi_wallet_interactions(
     println!("🔄 Running assertions...");
     println!("✅ All assertions passed!");
 
+    Ok(())
+}
+
+async fn test_cross_contract_calls(
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+    vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
+    user_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+) -> Result<()> {
+    println!("🧪 Testing cross-contract calls...");
+
+    // Mint tokens to the user wallet.
+    let mint_amount = TOKEN_AMOUNT;
+    let recipient = Identity::Address(user_wallet.address().into());
+
+    let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet);
+
+    admin_token_contract
+        .methods()
+        .mint(recipient, Some(SUB_ID), mint_amount)
+        .call()
+        .await?;
+
+    // deposit tokens into the vault
+    let deposit_amount = 100_000;
+
+    let asset_id = admin_token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
+
+    let call_paramas = CallParameters::default()
+        .with_amount(deposit_amount)
+        .with_asset_id(asset_id);
+
+    vault_contract
+        .methods()
+        .deposit()
+        .call_params(call_paramas)?
+        .call()
+        .await?;
+
+    // Verify deposit
+    let deposit_balance = vault_contract
+        .methods()
+        .get_deposit(Identity::Address(user_wallet.address().into()))
+        .call()
+        .await?
+        .value;
+
+    assert_eq!(deposit_balance, deposit_amount);
+
+    // Test withdrawal
+    let withdrawal_amount = 50_000;
+
+    let withdraw_call_paramas = CallParameters::default().with_asset_id(asset_id);
+
+    let vault_contract_for_withdraw = vault_contract.clone();
+
+    vault_contract_for_withdraw
+        .with_account(user_wallet.clone())
+        .methods()
+        .withdraw(withdrawal_amount)
+        .call_params(withdraw_call_paramas)?
+        .call()
+        .await?;
+
+    // Verify withdrawal
+    let remaining_deposit = vault_contract
+        .methods()
+        .get_deposit(Identity::Address(user_wallet.address().into()))
+        .call()
+        .await?
+        .value;
+
+    assert_eq!(remaining_deposit, deposit_amount - withdrawal_amount);
+
+    println!("✅ Cross-contract calls test passed");
     Ok(())
 }
 
