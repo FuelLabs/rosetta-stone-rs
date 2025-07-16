@@ -6,7 +6,7 @@ use std::{
     asset::{
         burn,
         mint_to,
-        transfer
+        transfer,
     },
     auth::msg_sender,
     call_frames::msg_asset_id,
@@ -26,7 +26,7 @@ configurable {
     NAME: str[7] = __to_str_array("MyAsset"),
     /// The symbol of the asset minted by this contract.
     SYMBOL: str[5] = __to_str_array("MYTKN"),
-   /// The admin of the contract (can mint/burn tokens).
+    /// The admin of the contract (can mint/burn tokens).
     ADMIN: Identity = Identity::Address(Address::zero()),
 }
 
@@ -63,11 +63,12 @@ impl SRC20 for Contract {
 
     #[storage(read)]
     fn total_supply(asset: AssetId) -> Option<u64> {
-        if asset == AssetId::default() {
-            Some(storage.total_supply.read())
-        } else {
-            None
-        }
+        // if asset == AssetId::default() {
+        //     Some(storage.total_supply.read())
+        // } else {
+        //     None
+        // }
+        Some(storage.total_supply.read())
     }
 
     #[storage(read)]

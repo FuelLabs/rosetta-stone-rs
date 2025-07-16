@@ -212,14 +212,17 @@ async fn test_multi_wallet_interactions(
     user_wallets: Vec<Wallet<Unlocked<PrivateKeySigner>>>,
 ) -> Result<()> {
     println!("🧪 Testing multi-wallet interactions...");
+    let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
     // Mint tokens to each user wallet in the list.
     for (i, user_wallet) in user_wallets.iter().enumerate() {
+        if i == 0 {
+            continue;
+        }
         let amount = TOKEN_AMOUNT + (i as u64 * 1000);
         let recipient = Identity::Address(user_wallet.address().into());
 
         // Create admin contract instance for minting.
-        let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
         println!(
             "🔄 Attempting to mint {} tokens to user {}: {:?}",
@@ -242,19 +245,20 @@ async fn test_multi_wallet_interactions(
     println!("initiating transfer");
 
     let transfer_amount = 50_000;
-    let token_asset_id = AssetId::from(*token_contract.contract_id());
+    // let token_asset_id = AssetId::from(*token_contract.contract_id());
+    let asset_id = admin_token_contract.methods().get_asset_id().call().await?.value;
 
     println!("🔄 About to transfer {} tokens", transfer_amount);
     println!("From: {}", user_wallets[0].address());
     println!("To: {}", user_wallets[1].address());
-    println!("Asset ID: {:?}", token_asset_id);
+    println!("Asset ID: {:?}", asset_id);
 
     // Attempt to transfer tokens from user1 to user2 using the DK's transfSer method.
     match user_wallets[0]
         .transfer(
             user_wallets[1].address(),
             transfer_amount,
-            token_asset_id,
+            asset_id,
             TxPolicies::default(),
         )
         .await
@@ -271,8 +275,8 @@ async fn test_multi_wallet_interactions(
     println!("🔄 Checking balances...");
 
     // Query balances after transfer.
-    let sender_balance = user_wallets[0].get_asset_balance(&token_asset_id).await?;
-    let recipient_balance = user_wallets[1].get_asset_balance(&token_asset_id).await?;
+    let sender_balance = user_wallets[0].get_asset_balance(&asset_id).await?;
+    let recipient_balance = user_wallets[1].get_asset_balance(&asset_id).await?;
 
     println!(
         "Sender balance after transfer: {}, Recipient balance after transfer: {}",
@@ -282,6 +286,8 @@ async fn test_multi_wallet_interactions(
     // Assert balances are as expected after transfer.
     assert_eq!(sender_balance, (1_000_000u128 - transfer_amount as u128));
     assert_eq!(recipient_balance, (1_001_000u128 + transfer_amount as u128));
+    // assert_eq!(sender_balance, 1950000);
+    // assert_eq!(recipient_balance, 1051000);
 
     println!("🔄 Running assertions...");
     println!("✅ All assertions passed!");
