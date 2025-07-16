@@ -472,7 +472,6 @@ async fn test_script_execution(
     )
     .with_configurables(configurables);
 
-
     let asset_id = admin_token_contract
         .methods()
         .get_asset_id()
@@ -521,16 +520,17 @@ async fn test_script_execution(
     admin_wallet.adjust_for_fee(&mut tb, 0).await?;
     admin_wallet.add_witnesses(&mut tb)?;
 
-    let tb =tb.enable_burn(true);
-
+    let tb = tb.enable_burn(true);
 
     // Add more gas limit for script execution
-    let tx_policies = TxPolicies::default().with_script_gas_limit(1_000_000).with_max_fee(1_000_000);
+    let tx_policies = TxPolicies::default()
+        .with_script_gas_limit(1_000_000)
+        .with_max_fee(1_000_000);
     let tb = tb.with_tx_policies(tx_policies);
 
     println!("🔄 Building and sending transaction...");
     let provider = admin_wallet.try_provider()?.clone();
-     let tx = match tb.clone().build(&provider).await {
+    let tx = match tb.clone().build(&provider).await {
         Ok(transaction) => {
             println!("✅ Transaction built successfully");
             transaction
@@ -558,13 +558,9 @@ async fn test_script_execution(
         }
     };
 
-
     let tx_status = provider.tx_status(&tx_id).await?;
 
     println!("tx_status: {:?}", tx_status);
-
-    
-
 
     let response = script_call_handler.get_response(tx_status)?;
     println!("Script execution response: {:?}", response);
@@ -661,8 +657,6 @@ async fn test_advanced_patterns(
     Ok(())
 }
 
-
-
 #[tokio::test]
 async fn test_comprehensive_logging() -> Result<()> {
     println!("🧪 Testing comprehensive logging...");
@@ -691,12 +685,7 @@ async fn test_comprehensive_logging() -> Result<()> {
     let all_logs = mint_response.decode_logs();
     println!("📝 Total logs: {}", all_logs.results.len());
 
-    let asset_id = token_contract
-        .methods()
-        .get_asset_id()
-        .call()
-        .await?
-        .value;
+    let asset_id = token_contract.methods().get_asset_id().call().await?.value;
 
     // Test burn operation
     let burn_amount = 5000;
@@ -718,7 +707,51 @@ async fn test_comprehensive_logging() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_performance_benchmarks() -> Result<()> {
+    println!("🧪 Testing performance benchmarks...");
 
+    let wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(Some(1), Some(1), Some(1_000_000)),
+        None,
+        None,
+    )
+    .await?;
+    let wallet = wallets[0].clone();
+    let token_contract = deploy_src20_token(wallet.clone(), "MYTOKEN", "TOKEN", 9).await?;
+
+    let admin_token_contract = token_contract.with_account(wallet.clone());
+    // Benchmark batch operations
+    let batch_size = 10;
+    let start_time = std::time::Instant::now();
+
+    for i in 0..batch_size {
+        let recipient = Identity::Address(wallet.address().into());
+        admin_token_contract
+            .methods()
+            .mint(recipient, Some(SUB_ID), 1000 * (i + 1) as u64)
+            .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+            .call()
+            .await?;
+    }
+
+    let elapsed = start_time.elapsed();
+    println!("⏱️  Batch of {} operations took: {:?}", batch_size, elapsed);
+
+    // Verify final state
+    let asset_id = admin_token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
+    let final_balance = wallet.get_asset_balance(&asset_id).await?;
+    let expected_total: u64 = (1..=batch_size).sum::<u64>() * 1000;
+    assert_eq!(final_balance, expected_total as u128);
+
+    println!("✅ Performance benchmarks test passed");
+    Ok(())
+}
 
 // [[bin]]
 // name = "deploy"
