@@ -343,6 +343,7 @@ async fn test_multi_wallet_interactions(
     Ok(())
 }
 
+
 async fn test_cross_contract_calls(
     token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
@@ -356,74 +357,152 @@ async fn test_cross_contract_calls(
     let mint_amount = TOKEN_AMOUNT;
     let recipient = Identity::Address(user_wallet.address().into());
 
+    println!("🔄 Creating admin token contract instance...");
     let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet);
 
-    admin_token_contract
+    println!("🔄 Minting {} tokens to user...", mint_amount);
+    match admin_token_contract
         .methods()
         .mint(recipient, Some(SUB_ID), mint_amount)
         .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
         .call()
-        .await?;
+        .await
+    {
+        Ok(_) => println!("✅ Mint successful"),
+        Err(e) => {
+            println!("❌ Mint failed: {:?}", e);
+            return Err(e.into());
+        }
+    }
 
-    // deposit tokens into the vault
-    let deposit_amount = 100_000;
-
-    let asset_id = admin_token_contract
+    // Check user balance after mint
+    let asset_id = match admin_token_contract
         .methods()
         .get_asset_id()
         .call()
-        .await?
-        .value;
+        .await
+    {
+        Ok(response) => {
+            println!("✅ Got asset ID: {:?}", response.value);
+            response.value
+        }
+        Err(e) => {
+            println!("❌ Failed to get asset ID: {:?}", e);
+            return Err(e.into());
+        }
+    };
 
-    let call_paramas = CallParameters::default()
-        .with_amount(deposit_amount)
+    let user_balance = user_wallet.get_asset_balance(&asset_id).await?;
+    println!("💰 User balance before deposit: {}", user_balance);
+
+    // Deposit tokens into the vault
+    let deposit_amount = 100_000;
+
+    println!("🔄 Preparing deposit of {} tokens...", deposit_amount);
+
+    // Check if user has enough balance
+    if user_balance < deposit_amount {
+        println!("❌ User has insufficient balance: {} < {}", user_balance, deposit_amount);
+        return Err("Insufficient balance for deposit".into());
+    }
+
+    let call_params = CallParameters::default()
+        .with_amount(deposit_amount as u64)
         .with_asset_id(asset_id);
 
-    vault_contract
+    println!("🔄 Executing deposit with user wallet...");
+    
+    // Use user wallet for deposit, not admin wallet
+    let user_vault_contract = vault_contract.clone().with_account(user_wallet.clone());
+    
+    match user_vault_contract
         .methods()
         .deposit()
-        .call_params(call_paramas)?
+        .call_params(call_params)?
         .call()
-        .await?;
+        .await
+    {
+        Ok(_) => println!("✅ Deposit successful"),
+        Err(e) => {
+            println!("❌ Deposit failed: {:?}", e);
+            return Err(e.into());
+        }
+    }
 
     // Verify deposit
-    let deposit_balance = vault_contract
+    println!("🔄 Verifying deposit...");
+    let deposit_balance = match vault_contract
         .methods()
         .get_deposit(Identity::Address(user_wallet.address().into()))
         .call()
-        .await?
-        .value;
+        .await
+    {
+        Ok(response) => {
+            println!("✅ Got deposit balance: {}", response.value);
+            response.value
+        }
+        Err(e) => {
+            println!("❌ Failed to get deposit balance: {:?}", e);
+            return Err(e.into());
+        }
+    };
 
-    assert_eq!(deposit_balance, deposit_amount);
+    assert_eq!(deposit_balance, deposit_amount as u64);
+    println!("✅ Deposit verification passed");
 
     // Test withdrawal
     let withdrawal_amount = 50_000;
 
-    let withdraw_call_paramas = CallParameters::default().with_asset_id(asset_id);
+    println!("🔄 Preparing withdrawal of {} tokens...", withdrawal_amount);
 
-    let vault_contract_for_withdraw = vault_contract.clone();
+    let withdraw_call_params = CallParameters::default().with_asset_id(asset_id);
 
-    vault_contract_for_withdraw
-        .with_account(user_wallet.clone())
+    let vault_contract_for_withdraw = vault_contract.clone().with_account(user_wallet.clone());
+
+    match vault_contract_for_withdraw
         .methods()
         .withdraw(withdrawal_amount)
-        .call_params(withdraw_call_paramas)?
+        .call_params(withdraw_call_params)?
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
         .call()
-        .await?;
+        .await
+    {
+        Ok(_) => println!("✅ Withdrawal successful"),
+        Err(e) => {
+            println!("❌ Withdrawal failed: {:?}", e);
+            return Err(e.into());
+        }
+    }
 
     // Verify withdrawal
-    let remaining_deposit = vault_contract
+    println!("🔄 Verifying withdrawal...");
+    let remaining_deposit = match vault_contract
         .methods()
         .get_deposit(Identity::Address(user_wallet.address().into()))
         .call()
-        .await?
-        .value;
+        .await
+    {
+        Ok(response) => {
+            println!("✅ Got remaining deposit balance: {}", response.value);
+            response.value
+        }
+        Err(e) => {
+            println!("❌ Failed to get remaining deposit balance: {:?}", e);
+            return Err(e.into());
+        }
+    };
 
-    assert_eq!(remaining_deposit, deposit_amount - withdrawal_amount);
+    assert_eq!(remaining_deposit, deposit_amount as u64 - withdrawal_amount as u64);
+    println!("✅ Withdrawal verification passed");
+
+    // Check final user balance
+    let final_user_balance = user_wallet.get_asset_balance(&asset_id).await?;
+    println!("💰 User final balance: {}", final_user_balance);
 
     println!("✅ Cross-contract calls test passed");
     Ok(())
 }
+
 
 async fn test_script_execution(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
