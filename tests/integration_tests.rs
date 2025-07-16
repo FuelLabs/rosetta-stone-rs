@@ -108,16 +108,15 @@ async fn test_complete_rosetta_stone_workflow() {
             user3_wallet.clone(),
         ],
         src20_contract_instance.clone(),
-        
     )
     .await;
 
-
     let _____ = test_advanced_patterns(
         src20_contract_instance.clone(),
-            token_vault_instance.clone(),
-            admin_wallet.clone(),
-    ).await;
+        token_vault_instance.clone(),
+        admin_wallet.clone(),
+    )
+    .await;
 
     // Assert that the token vault contract was deployed successfully (not default ID).
     assert_ne!(
@@ -279,7 +278,7 @@ async fn test_multi_wallet_interactions(
         );
 
         // Mint tokens to the user wallet.
-        let mint_tx = admin_token_contract
+        let mint_tx: fuels::programs::responses::CallResponse<()> = admin_token_contract
             .methods()
             .mint(recipient, Some(SUB_ID), amount)
             .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
@@ -443,6 +442,28 @@ async fn test_script_execution(
 
     let amounts = [1000, 2000, 3000];
 
+    let admin_token_contract =
+        Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
+
+    let recipient = Identity::Address(admin_wallet.address().into());
+
+    match admin_token_contract
+        .methods()
+        .mint(recipient, Some(SUB_ID), TOKEN_AMOUNT)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+        .call()
+        .await
+    {
+        Ok(txn) => {
+            println!("✅Script test Mint successful!");
+            txn
+        }
+        Err(e) => {
+            println!("❌ Script test Mint failed: {:?}", e);
+            return Err(e.into());
+        }
+    };
+
     let configurables = MultiAssetTransferConfigurables::default()
         .with_RECIPIENTS(recipients)?
         .with_AMOUNTS(amounts)?;
@@ -454,8 +475,6 @@ async fn test_script_execution(
     )
     .with_configurables(configurables);
 
-    let admin_token_contract =
-        Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
     let asset_id = admin_token_contract
         .methods()
@@ -469,29 +488,86 @@ async fn test_script_execution(
     let mut tb = script_call_handler.transaction_builder().await?;
 
     // Add enough input coins of the asset_id to the script
-let total_amount = 1000 + 2000 + 3000;
+    let total_amount = 1000 + 2000 + 3000;
 
-    let asset_inputs = admin_wallet.get_asset_inputs_for_amount(asset_id, total_amount, None).await?;
+    let asset_inputs = match admin_wallet
+        .get_asset_inputs_for_amount(asset_id, total_amount, None)
+        .await
+    {
+        Ok(inputs) => {
+            println!("✅ Found {} asset inputs", inputs.len());
+            inputs
+        }
+        Err(e) => {
+            println!("❌ Failed to get asset inputs: {:?}", e);
+
+            // Check if we have enough balance
+            let current_balance = admin_wallet.get_asset_balance(&asset_id).await?;
+            println!(
+                "💰 Current balance: {}, Required: {}",
+                current_balance, total_amount
+            );
+
+            return Err(e.into());
+        }
+    };
 
     tb.inputs.extend(asset_inputs);
+    let tb = tb.enable_burn(true);
+    let mut tb = tb.with_variable_output_policy(VariableOutputPolicy::Exactly(1));
+    // Add base asset for fees
+    println!("🔄 Adding base asset for fees...");
+    let base_balance = admin_wallet.get_asset_balance(&AssetId::BASE).await?;
+    println!("💰 Base balance: {}", base_balance);
+
     // Adjust for fee and add witnesses
     admin_wallet.adjust_for_fee(&mut tb, 0).await?;
     admin_wallet.add_witnesses(&mut tb)?;
 
+    let tb =tb.enable_burn(true);
+
+
+    // Add more gas limit for script execution
+    let tx_policies = TxPolicies::default().with_script_gas_limit(1_000_000).with_max_fee(1_000_000);
+    let tb = tb.with_tx_policies(tx_policies);
+
+    println!("🔄 Building and sending transaction...");
     let provider = admin_wallet.try_provider()?.clone();
-    let tx = tb.build(&provider).await?;
+     let tx = match tb.clone().build(&provider).await {
+        Ok(transaction) => {
+            println!("✅ Transaction built successfully");
+            transaction
+        }
+        Err(e) => {
+            println!("❌ Transaction building failed: {:?}", e);
+            println!("🔍 Transaction builder state:");
+            println!("  - Inputs: {}", tb.inputs.len());
+            println!("  - Outputs: {}", tb.outputs.len());
+            println!("  - Witnesses: {}", tb.witnesses.len());
+            // println!("  - Script gas limit: {:?}", tx_policies.script_gas_limit);
+            // println!("  - Max fee: {:?}", tx_policies.max_fee);
+            return Err(e.into());
+        }
+    };
 
     let tx_id = match provider.send_transaction(tx).await {
-        Ok(id) => id,
+        Ok(id) => {
+            println!("✅ Transaction sent successfully: {:?}", id);
+            id
+        }
         Err(e) => {
             println!("❌ Script execution failed: {:?}", e);
             return Err(e.into());
         }
     };
 
+
     let tx_status = provider.tx_status(&tx_id).await?;
 
     println!("tx_status: {:?}", tx_status);
+
+    
+
 
     let response = script_call_handler.get_response(tx_status)?;
     println!("Script execution response: {:?}", response);
@@ -509,8 +585,8 @@ let total_amount = 1000 + 2000 + 3000;
 
 async fn test_advanced_patterns(
     token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
-     vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
-     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>
+    vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<()> {
     println!("🧪 Testing advanced patterns...");
 
@@ -524,12 +600,69 @@ async fn test_advanced_patterns(
 
     assert_eq!(new_height, initial_height + 5);
     println!("✅ Block manipulation test passed");
+
+    // Test gas optimization
+    let admin_token_contract =
+        Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
+
+    let recipient = Identity::Address(admin_wallet.address().into());
+
+    // Check wallet balance before transaction
+    let base_balance = admin_wallet.get_asset_balance(&AssetId::BASE).await?;
+    println!("base_balance: {:?}", base_balance);
+
+    // Estimate gas cost
+    let estimated_cost = admin_token_contract
+        .methods()
+        .mint(recipient, Some(SUB_ID), TOKEN_AMOUNT)
+        .estimate_transaction_cost(None, None)
+        .await?;
+
+    // Ensure we have enough base assets
+    if base_balance < estimated_cost.total_fee as u128 {
+        println!("❌ Insufficient base assets for transaction");
+        return Err("Insufficient base assets".into());
+    }
+
+    println!("⛽ Estimated gas cost: {:?}", estimated_cost);
+    // Test with custom transaction policies
+    let custom_policies = TxPolicies::default()
+        .with_script_gas_limit(estimated_cost.total_gas * 2)
+        .with_max_fee(estimated_cost.total_fee * 2);
+
+    let txn_with_custom_policies = match admin_token_contract
+        .methods()
+        .mint(recipient, Some(SUB_ID), TOKEN_AMOUNT)
+        .with_tx_policies(custom_policies)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+        .call()
+        .await
+    {
+        Ok(txn) => txn,
+        Err(e) => {
+            println!("❌ Mint with custom policies failed: {:?}", e);
+            return Err(e.into());
+        }
+    };
+
+    println!(
+        "Mint transaction: {:?}",
+        txn_with_custom_policies.decode_logs().results[0]
+    );
+
+    let txn_with_custom_policies_logs = txn_with_custom_policies.decode_logs();
+    assert!(
+        !txn_with_custom_policies_logs.results.is_empty(),
+        "Should have mint logs"
+    );
+
+    let balances = admin_wallet.get_balances().await?;
+    println!("balances: {:?}", balances);
+
+    println!("✅ Advanced patterns test passed successfully");
+
     Ok(())
 }
-
-
-
-
 
 // [[bin]]
 // name = "deploy"
