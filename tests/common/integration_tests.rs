@@ -21,10 +21,6 @@ abigen!(
         name = "MultiAssetTransfer",
         abi = "scripts/multi-asset-transfer/out/debug/multi_asset_transfer-abi.json",
     ),
-    Predicate(
-        name = "MultiSigPredicate",
-        abi = "predicates/multi-sig/out/debug/multi_sig_predicate-abi.json",
-    )
 );
 
 const TOKEN_AMOUNT: u64 = 1_000_000;
@@ -663,7 +659,6 @@ async fn test_advanced_patterns(
 
     Ok(())
 }
-
 // [[bin]]
 // name = "deploy"
 // path = "examples/deploy.rs"
