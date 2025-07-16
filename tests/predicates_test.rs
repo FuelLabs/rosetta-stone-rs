@@ -1,11 +1,8 @@
 use fuels::{
-    accounts::signers::{derivation::DEFAULT_DERIVATION_PATH, private_key::PrivateKeySigner},
-    crypto::SecretKey,
     prelude::*,
-    types::{AssetId, Bits256, ContractId, Identity, SizedAsciiString},
+    types::AssetId,
 };
 
-use fuels::accounts::wallet::Unlocked;
 
 abigen!(Predicate(
     name = "MultiSigPredicate",

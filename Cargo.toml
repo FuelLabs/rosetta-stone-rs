@@ -16,7 +16,3 @@ serde = { version = "1.0", features = ["derive"] }
 
 
 
-[[test]]
-harness = true
-name = "integration_tests"
-path = "tests/**/**.rs"
