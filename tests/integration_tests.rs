@@ -437,26 +437,35 @@ async fn test_script_execution(
         .with_RECIPIENTS(recipients)?
         .with_AMOUNTS(amounts)?;
 
-    // Load and execute script
+    // Load and execute script using custom transaction builder pattern
     let script_instance = MultiAssetTransfer::new(
         admin_wallet.clone(),
         "scripts/multi-asset-transfer/out/debug/multi_asset_transfer.bin",
     )
     .with_configurables(configurables);
 
-    let response_result = script_instance
-        .main(AssetId::default())
-        .call()
-        .await;
+    let script_call_handler = script_instance.main(AssetId::default());
 
-    let response = match response_result {
-        Ok(resp) => resp,
+    let mut tb = script_call_handler.transaction_builder().await?;
+
+    // Adjust for fee and add witnesses
+    admin_wallet.adjust_for_fee(&mut tb, 0).await?;
+    admin_wallet.add_witnesses(&mut tb)?;
+
+    let provider = admin_wallet.try_provider()?.clone();
+    let tx = tb.build(&provider).await?;
+
+    let tx_id = match provider.send_transaction(tx).await {
+        Ok(id) => id,
         Err(e) => {
             eprintln!("❌ Script execution failed: {:?}", e);
             return Err(e.into());
         }
     };
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let tx_status = provider.tx_status(&tx_id).await?;
 
+    let response = script_call_handler.get_response(tx_status)?;
     println!("Script execution response: {:?}", response);
 
     // Verify script execution
