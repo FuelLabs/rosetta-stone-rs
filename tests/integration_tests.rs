@@ -216,7 +216,7 @@ async fn test_token_operations(
         .call()
         .await?;
 
-    println!("✅ Mint transaction successful!");
+    println!("Mint transaction successful!");
     println!("Mint transaction: {:?}", mint_tx.decode_logs().results[0]);
 
     let mint_logs = mint_tx.decode_logs();
@@ -282,9 +282,9 @@ async fn test_multi_wallet_interactions(
             .call()
             .await?;
 
-        println!("✅ Mint transaction successful for user {}!", i + 1);
+        println!(" Mint transaction successful for user {}!", i + 1);
     }
-    println!("✅ Multi-wallet interactions test passed");
+    println!("Multi-wallet interactions test passed");
     println!("initiating transfer");
 
     let transfer_amount = 50_000;
@@ -312,7 +312,7 @@ async fn test_multi_wallet_interactions(
         .await
     {
         Ok(tx_result) => {
-            println!("✅ Transfer successful! Transaction: {:?}", tx_result);
+            println!("Transfer successful! Transaction: {:?}", tx_result);
         }
         Err(e) => {
             println!("❌ Transfer failed: {:?}", e);
@@ -349,6 +349,7 @@ async fn test_cross_contract_calls(
     vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
     user_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<()> {
+    println!("Starting cross-contract test...");
     println!("🧪 Testing cross-contract calls...");
 
     // Mint tokens to the user wallet.
@@ -360,6 +361,7 @@ async fn test_cross_contract_calls(
     admin_token_contract
         .methods()
         .mint(recipient, Some(SUB_ID), mint_amount)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
         .call()
         .await?;
 
@@ -452,7 +454,7 @@ async fn test_script_execution(
         .await
     {
         Ok(txn) => {
-            println!("✅Script test Mint successful!");
+            println!("Script test Mint successful!");
             txn
         }
         Err(e) => {
@@ -491,7 +493,7 @@ async fn test_script_execution(
         .await
     {
         Ok(inputs) => {
-            println!("✅ Found {} asset inputs", inputs.len());
+            println!("Found {} asset inputs", inputs.len());
             inputs
         }
         Err(e) => {
@@ -532,7 +534,7 @@ async fn test_script_execution(
     let provider = admin_wallet.try_provider()?.clone();
     let tx = match tb.clone().build(&provider).await {
         Ok(transaction) => {
-            println!("✅ Transaction built successfully");
+            println!("Transaction built successfully");
             transaction
         }
         Err(e) => {
@@ -549,7 +551,7 @@ async fn test_script_execution(
 
     let tx_id = match provider.send_transaction(tx).await {
         Ok(id) => {
-            println!("✅ Transaction sent successfully: {:?}", id);
+            println!("Transaction sent successfully: {:?}", id);
             id
         }
         Err(e) => {
