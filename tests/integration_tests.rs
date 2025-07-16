@@ -107,6 +107,8 @@ async fn test_complete_rosetta_stone_workflow() {
             user2_wallet.clone(),
             user3_wallet.clone(),
         ],
+        src20_contract_instance.clone(),
+        
     )
     .await;
 
@@ -421,6 +423,7 @@ async fn test_cross_contract_calls(
 async fn test_script_execution(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
     users: &[Wallet<Unlocked<PrivateKeySigner>>],
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
 ) -> Result<()> {
     println!("🧪 Testing script execution...");
 
@@ -444,10 +447,26 @@ async fn test_script_execution(
     )
     .with_configurables(configurables);
 
-    let script_call_handler = script_instance.main(AssetId::default());
+    let admin_token_contract =
+        Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
+
+    let asset_id = admin_token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
+
+    let script_call_handler = script_instance.main(asset_id);
 
     let mut tb = script_call_handler.transaction_builder().await?;
 
+    // Add enough input coins of the asset_id to the script
+let total_amount = 1000 + 2000 + 3000;
+
+    let asset_inputs = admin_wallet.get_asset_inputs_for_amount(asset_id, total_amount, None).await?;
+
+    tb.inputs.extend(asset_inputs);
     // Adjust for fee and add witnesses
     admin_wallet.adjust_for_fee(&mut tb, 0).await?;
     admin_wallet.add_witnesses(&mut tb)?;
@@ -458,12 +477,14 @@ async fn test_script_execution(
     let tx_id = match provider.send_transaction(tx).await {
         Ok(id) => id,
         Err(e) => {
-            eprintln!("❌ Script execution failed: {:?}", e);
+            println!("❌ Script execution failed: {:?}", e);
             return Err(e.into());
         }
     };
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     let tx_status = provider.tx_status(&tx_id).await?;
+
+    println!("tx_status: {:?}", tx_status);
 
     let response = script_call_handler.get_response(tx_status)?;
     println!("Script execution response: {:?}", response);
