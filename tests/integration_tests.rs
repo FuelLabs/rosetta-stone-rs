@@ -29,6 +29,7 @@ const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
 /// Integration test for the complete Rosetta Stone workflow.
 /// This test deploys the SRC20 token contract, mints tokens, deploys the token vault, and performs multi-wallet interactions including transfers.
+
 #[tokio::test]
 async fn test_complete_rosetta_stone_workflow() {
     // Configure the test environment: number of wallets, coins per wallet, and amount per coin.
@@ -659,6 +660,66 @@ async fn test_advanced_patterns(
 
     Ok(())
 }
+
+
+
+#[tokio::test]
+async fn test_comprehensive_logging() -> Result<()> {
+    println!("🧪 Testing comprehensive logging...");
+
+    let wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(Some(1), Some(1), Some(1_000_000)),
+        None,
+        None,
+    )
+    .await?;
+    let wallet = wallets[0].clone();
+    let token_contract = deploy_src20_token(wallet.clone(), "MYTOKEN", "TOKEN", 9).await?;
+
+    // Test various operations with logging
+    let recipient = Identity::Address(wallet.address().into());
+
+    // Mint operation
+    let mint_response = token_contract
+        .methods()
+        .mint(recipient, Some(SUB_ID), 10000)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+        .call()
+        .await?;
+
+    // Decode different log types
+    let all_logs = mint_response.decode_logs();
+    println!("📝 Total logs: {}", all_logs.results.len());
+
+    let asset_id = token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
+
+    // Test burn operation
+    let burn_amount = 5000;
+    let call_params = CallParameters::default()
+        .with_amount(burn_amount)
+        .with_asset_id(asset_id);
+
+    let burn_response = token_contract
+        .methods()
+        .burn(SUB_ID, burn_amount)
+        .call_params(call_params)?
+        .call()
+        .await?;
+
+    let burn_logs = burn_response.decode_logs();
+    println!("🔥 Burn logs: {}", burn_logs.results.len());
+
+    println!("✅ Comprehensive logging test passed");
+    Ok(())
+}
+
+
+
 // [[bin]]
 // name = "deploy"
 // path = "examples/deploy.rs"
