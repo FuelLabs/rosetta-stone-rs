@@ -16,6 +16,14 @@ abigen!(
     Contract(
         name = "TokenVault",
         abi = "contracts/token-vault/out/debug/token_vault-abi.json",
+    ),
+    Script(
+        name = "MultiAssetTransfer",
+        abi = "scripts/multi-asset-transfer/out/debug/multi_asset_transfer-abi.json",
+    ),
+    Predicate(
+        name = "MultiSigPredicate",
+        abi = "predicates/multi-sig/out/debug/multi_sig_predicate-abi.json",
     )
 );
 
@@ -76,7 +84,11 @@ async fn test_complete_rosetta_stone_workflow() {
     let __ = test_multi_wallet_interactions(
         src20_contract_instance.clone(),
         admin_wallet.clone(),
-        vec![user1_wallet.clone(), user2_wallet, user3_wallet],
+        vec![
+            user1_wallet.clone(),
+            user2_wallet.clone(),
+            user3_wallet.clone(),
+        ],
     )
     .await;
 
@@ -85,6 +97,16 @@ async fn test_complete_rosetta_stone_workflow() {
         admin_wallet.clone(),
         token_vault_instance.clone(),
         user1_wallet.clone(),
+    )
+    .await;
+
+    let ____ = test_script_execution(
+        admin_wallet.clone(),
+        &[
+            user1_wallet.clone(),
+            user2_wallet.clone(),
+            user3_wallet.clone(),
+        ],
     )
     .await;
 
@@ -396,6 +418,57 @@ async fn test_cross_contract_calls(
     Ok(())
 }
 
+async fn test_script_execution(
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+    users: &[Wallet<Unlocked<PrivateKeySigner>>],
+) -> Result<()> {
+    println!("🧪 Testing script execution...");
+
+    // Configure script with user addresses
+    let recipients = [
+        Identity::Address(users[0].address().into()),
+        Identity::Address(users[1].address().into()),
+        Identity::Address(users[2].address().into()),
+    ];
+
+    let amounts = [1000, 2000, 3000];
+
+    let configurables = MultiAssetTransferConfigurables::default()
+        .with_RECIPIENTS(recipients)?
+        .with_AMOUNTS(amounts)?;
+
+    // Load and execute script
+    let script_instance = MultiAssetTransfer::new(
+        admin_wallet.clone(),
+        "scripts/multi-asset-transfer/out/debug/multi_asset_transfer.bin",
+    )
+    .with_configurables(configurables);
+
+    let response_result = script_instance
+        .main(AssetId::default())
+        .call()
+        .await;
+
+    let response = match response_result {
+        Ok(resp) => resp,
+        Err(e) => {
+            eprintln!("❌ Script execution failed: {:?}", e);
+            return Err(e.into());
+        }
+    };
+
+    println!("Script execution response: {:?}", response);
+
+    // Verify script execution
+    assert!(response.value, "Script should return true on success");
+
+    // check logs
+    let logs = response.decode_logs();
+    assert!(!logs.results.is_empty(), "Should have executed logs");
+
+    println!("✅ Script execution test passed");
+    Ok(())
+}
 // [[bin]]
 // name = "deploy"
 // path = "examples/deploy.rs"
