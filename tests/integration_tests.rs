@@ -112,6 +112,13 @@ async fn test_complete_rosetta_stone_workflow() {
     )
     .await;
 
+
+    let _____ = test_advanced_patterns(
+        src20_contract_instance.clone(),
+            token_vault_instance.clone(),
+            admin_wallet.clone(),
+    ).await;
+
     // Assert that the token vault contract was deployed successfully (not default ID).
     assert_ne!(
         token_vault_instance.contract_id().to_string(),
@@ -499,6 +506,31 @@ let total_amount = 1000 + 2000 + 3000;
     println!("✅ Script execution test passed");
     Ok(())
 }
+
+async fn test_advanced_patterns(
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+     vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
+     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>
+) -> Result<()> {
+    println!("🧪 Testing advanced patterns...");
+
+    // Test block manipulation
+    let provider = admin_wallet.try_provider()?;
+    let initial_height = provider.latest_block_height().await?;
+
+    // Produce blocks
+    provider.produce_blocks(5, None).await?;
+    let new_height = provider.latest_block_height().await?;
+
+    assert_eq!(new_height, initial_height + 5);
+    println!("✅ Block manipulation test passed");
+    Ok(())
+}
+
+
+
+
+
 // [[bin]]
 // name = "deploy"
 // path = "examples/deploy.rs"
