@@ -15,6 +15,8 @@ configurable {
     TOKEN_CONTRACT: ContractId = ContractId::zero(),
     /// The admin of the vault.
     ADMIN: Identity = Identity::Address(Address::zero()),
+    /// The contract ID of the cross-contract call contract.
+    CROSS_CONTRACT_CALL: ContractId = ContractId::zero(),
 }
 
 storage {
@@ -133,7 +135,8 @@ impl TokenVault for Contract {
     /// Cross-contract transfer demonstration.
     #[storage(read, write)]
     fn cross_contract_deposit(user: Identity, amount: u64) {
-        require(msg_sender().unwrap() == ADMIN, "Only admin can cross-contract deposit");
+        require(CROSS_CONTRACT_CALL != ContractId::zero(), "Cross-contract call contract not set");
+        require(msg_sender().unwrap() == CROSS_CONTRACT_CALL, "Only cross-contract call can cross-contract deposit");
         
         // This would typically involve calling another contract
         // For demonstration, we'll just update the deposit
