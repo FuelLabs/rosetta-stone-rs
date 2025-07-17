@@ -10,13 +10,9 @@ license = "Apache-2.0"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [dependencies]
-fuels = "0.70.0"
+fuels = { version = "0.74.0", features = ["fuel-core-lib"] }
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 
 
 
-[[test]]
-harness = true
-name = "integration_tests"
-path = "tests/integration_tests.rs"

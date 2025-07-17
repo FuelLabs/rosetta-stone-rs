@@ -1,3 +1,10 @@
+[workspace]
+members = [
+    "contracts/src20-token",
+    "contracts/token-vault",
+    "predicates/multi-sig",
+    "scripts/multi-asset-transfer",
+]
 [project]
 authors = ["Nazeeh Vahora"]
 entry = "main.sw"

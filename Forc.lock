@@ -1,0 +1,49 @@
+[[package]]
+name = "multi_asset_transfer"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "multi_sig_predicate"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "src20"
+version = "0.8.0"
+source = "registry+src20?0.8.0#QmSwYjybtdvSF3Ey9RncVUUaFaWsizSBNgAtY9JoyaAHvh!"
+dependencies = ["std"]
+
+[[package]]
+name = "src20_token"
+source = "member"
+dependencies = [
+    "src20",
+    "src3",
+    "std",
+]
+
+[[package]]
+name = "src3"
+version = "0.8.0"
+source = "registry+src3?0.8.0#QmWZt1NRQHid4p5cmFMG11n1tnRfNSgWGXUWDgojt9hjzs!"
+dependencies = ["std"]
+
+[[package]]
+name = "src6"
+version = "0.8.0"
+source = "registry+src6?0.8.0#QmSh7UzDFupJyH1puURyeyV7aqRchuHsL9YQFmbahyavZo!"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+version = "0.68.9"
+source = "registry+std?0.68.9#QmUaBxMs2JvY1bXgRCdeCsG3o6TN82ftRgv4Tq7ytqUGUT!"
+
+[[package]]
+name = "token_vault"
+source = "member"
+dependencies = [
+    "src6",
+    "std",
+]
