@@ -58,6 +58,7 @@ abi TokenVault {
     fn get_total_deposits() -> u64;
     
     /// Cross-contract transfer demonstration.
+    #[payable]
     #[storage(read, write)]
     fn cross_contract_deposit(user: Identity, amount: u64);
     
@@ -133,10 +134,11 @@ impl TokenVault for Contract {
     }
     
     /// Cross-contract transfer demonstration.
+    #[payable]
     #[storage(read, write)]
     fn cross_contract_deposit(user: Identity, amount: u64) {
         require(CROSS_CONTRACT_CALL != ContractId::zero(), "Cross-contract call contract not set");
-        require(msg_sender().unwrap() == CROSS_CONTRACT_CALL, "Only cross-contract call can cross-contract deposit");
+        require(msg_sender().unwrap() == Identity::ContractId(CROSS_CONTRACT_CALL), "Only cross-contract call can cross-contract deposit");
         
         // This would typically involve calling another contract
         // For demonstration, we'll just update the deposit
