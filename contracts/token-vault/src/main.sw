@@ -11,8 +11,6 @@ use std::{
 };
 
 configurable {
-    /// The contract ID of the token this vault accepts.
-    TOKEN_CONTRACT: ContractId = ContractId::zero(),
     /// The admin of the vault.
     ADMIN: Identity = Identity::Address(Address::zero()),
     /// The contract ID of the cross-contract call contract.

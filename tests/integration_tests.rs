@@ -17,6 +17,10 @@ abigen!(
         name = "TokenVault",
         abi = "contracts/token-vault/out/debug/token_vault-abi.json",
     ),
+    Contract(
+        name = "CrossContractCall",
+        abi = "contracts/cross-contract-call/out/debug/cross_contract_call-abi.json",
+    ),
     Script(
         name = "MultiAssetTransfer",
         abi = "scripts/multi-asset-transfer/out/debug/multi_asset_transfer-abi.json",
@@ -57,6 +61,8 @@ async fn test_complete_rosetta_stone_workflow() {
         .await
         .unwrap();
 
+    let cross_contract_call_contract_instance = deploy_cross_contract_call(admin_wallet.clone()).await.unwrap();
+
     // Get the contract ID of the deployed token contract.
     let ethereum_token_contract_id = src20_token_instance.contract_id();
 
@@ -65,7 +71,7 @@ async fn test_complete_rosetta_stone_workflow() {
 
     // Deploy the token vault contract, passing the admin wallet and token contract instance.
     let token_vault_instance =
-        deploy_token_vault(admin_wallet.clone(), src20_contract_instance.clone())
+        deploy_token_vault(admin_wallet.clone(), cross_contract_call_contract_instance.clone())
             .await
             .unwrap();
 
@@ -89,7 +95,7 @@ async fn test_complete_rosetta_stone_workflow() {
     )
     .await;
 
-    let ___ = test_cross_contract_calls(
+    let ___ = test_vault_deposit(
         src20_contract_instance.clone(),
         admin_wallet.clone(),
         token_vault_instance.clone(),
@@ -166,11 +172,11 @@ async fn deploy_src20_token(
 /// Deploys the TokenVault contract, linking it to the given token contract and admin wallet.
 async fn deploy_token_vault(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
-    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+    cross_contract_call_contract_instance: CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
 ) -> Result<TokenVault<Wallet<Unlocked<PrivateKeySigner>>>> {
     // Set up contract configurables (token contract, admin).
     let configurables = TokenVaultConfigurables::default()
-        .with_TOKEN_CONTRACT(ContractId::from(token_contract.contract_id()))?
+        .with_CROSS_CONTRACT_CALL(ContractId::from(cross_contract_call_contract_instance.contract_id()))?
         .with_ADMIN(Identity::Address(wallet.address().into()))?;
 
     // Deploy the contract to the local node.
@@ -187,6 +193,24 @@ async fn deploy_token_vault(
 
     println!("✅ Token Vault deployed at: {}", contract_id.to_string());
     Ok(token_vault_instance)
+}
+
+async fn deploy_cross_contract_call(
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+) -> Result<CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>> {
+    let configurables = CrossContractCallConfigurables::default()
+        .with_ADMIN(Identity::Address(admin_wallet.address().into()))?;
+
+    let deploy_response = Contract::load_from(
+        "contracts/cross-contract-call/out/debug/cross_contract_call.bin",
+        LoadConfiguration::default().with_configurables(configurables),
+    )?
+    .deploy(&admin_wallet, TxPolicies::default())
+    .await?;
+
+    let contract_id = deploy_response.contract_id;
+    println!("✅ Cross Contract Call deployed at: {}", contract_id.to_string());
+    Ok(CrossContractCall::new(contract_id, admin_wallet))
 }
 
 /// Tests basic token operations: minting, checking supply, and verifying logs.
@@ -344,7 +368,7 @@ async fn test_multi_wallet_interactions(
 }
 
 
-async fn test_cross_contract_calls(
+async fn test_vault_deposit(
     token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
     vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
@@ -499,7 +523,7 @@ async fn test_cross_contract_calls(
     let final_user_balance = user_wallet.get_asset_balance(&asset_id).await?;
     println!("💰 User final balance: {}", final_user_balance);
 
-    println!("✅ Cross-contract calls test passed");
+    println!("✅ Vault deposit test passed");
     Ok(())
 }
 
