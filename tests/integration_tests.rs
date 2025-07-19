@@ -17,6 +17,10 @@ abigen!(
         name = "TokenVault",
         abi = "contracts/token-vault/out/debug/token_vault-abi.json",
     ),
+    Contract(
+        name = "CrossContractCall",
+        abi = "contracts/cross-contract-call/out/debug/cross_contract_call-abi.json",
+    ),
     Script(
         name = "MultiAssetTransfer",
         abi = "scripts/multi-asset-transfer/out/debug/multi_asset_transfer-abi.json",
@@ -57,6 +61,10 @@ async fn test_complete_rosetta_stone_workflow() {
         .await
         .unwrap();
 
+    let cross_contract_call_contract_instance = deploy_cross_contract_call(admin_wallet.clone())
+        .await
+        .unwrap();
+
     // Get the contract ID of the deployed token contract.
     let ethereum_token_contract_id = src20_token_instance.contract_id();
 
@@ -64,10 +72,12 @@ async fn test_complete_rosetta_stone_workflow() {
     let src20_contract_instance = Src20Token::new(ethereum_token_contract_id, user1_wallet.clone());
 
     // Deploy the token vault contract, passing the admin wallet and token contract instance.
-    let token_vault_instance =
-        deploy_token_vault(admin_wallet.clone(), src20_contract_instance.clone())
-            .await
-            .unwrap();
+    let token_vault_instance = deploy_token_vault(
+        admin_wallet.clone(),
+        cross_contract_call_contract_instance.clone(),
+    )
+    .await
+    .unwrap();
 
     // Run basic token operations test (minting, supply checks, etc.).
     let _ = test_token_operations(
@@ -89,7 +99,7 @@ async fn test_complete_rosetta_stone_workflow() {
     )
     .await;
 
-    let ___ = test_cross_contract_calls(
+    let ___ = test_vault_deposit(
         src20_contract_instance.clone(),
         admin_wallet.clone(),
         token_vault_instance.clone(),
@@ -112,6 +122,15 @@ async fn test_complete_rosetta_stone_workflow() {
         src20_contract_instance.clone(),
         token_vault_instance.clone(),
         admin_wallet.clone(),
+    )
+    .await;
+
+    let ______ = test_cross_contract_call(
+        cross_contract_call_contract_instance.clone(),
+        src20_contract_instance.clone(),
+        token_vault_instance.clone(),
+        admin_wallet.clone(),
+        user1_wallet.clone(),
     )
     .await;
 
@@ -166,11 +185,13 @@ async fn deploy_src20_token(
 /// Deploys the TokenVault contract, linking it to the given token contract and admin wallet.
 async fn deploy_token_vault(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
-    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+    cross_contract_call_contract_instance: CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
 ) -> Result<TokenVault<Wallet<Unlocked<PrivateKeySigner>>>> {
     // Set up contract configurables (token contract, admin).
     let configurables = TokenVaultConfigurables::default()
-        .with_TOKEN_CONTRACT(ContractId::from(token_contract.contract_id()))?
+        .with_CROSS_CONTRACT_CALL(ContractId::from(
+            cross_contract_call_contract_instance.contract_id(),
+        ))?
         .with_ADMIN(Identity::Address(wallet.address().into()))?;
 
     // Deploy the contract to the local node.
@@ -187,6 +208,27 @@ async fn deploy_token_vault(
 
     println!("✅ Token Vault deployed at: {}", contract_id.to_string());
     Ok(token_vault_instance)
+}
+
+async fn deploy_cross_contract_call(
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+) -> Result<CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>> {
+    let configurables = CrossContractCallConfigurables::default()
+        .with_ADMIN(Identity::Address(admin_wallet.address().into()))?;
+
+    let deploy_response = Contract::load_from(
+        "contracts/cross-contract-call/out/debug/cross_contract_call.bin",
+        LoadConfiguration::default().with_configurables(configurables),
+    )?
+    .deploy(&admin_wallet, TxPolicies::default())
+    .await?;
+
+    let contract_id = deploy_response.contract_id;
+    println!(
+        "✅ Cross Contract Call deployed at: {}",
+        contract_id.to_string()
+    );
+    Ok(CrossContractCall::new(contract_id, admin_wallet))
 }
 
 /// Tests basic token operations: minting, checking supply, and verifying logs.
@@ -343,15 +385,139 @@ async fn test_multi_wallet_interactions(
     Ok(())
 }
 
+async fn test_cross_contract_call(
+    cross_contract_call_contract: CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
+    token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
+    vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
+    admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+    user_wallet: Wallet<Unlocked<PrivateKeySigner>>,
+) -> Result<()> {
+    println!("🧪 Testing cross-contract call...");
 
-async fn test_cross_contract_calls(
+    let user_vault_contract =
+        TokenVault::new(vault_contract.contract_id().clone(), user_wallet.clone());
+
+    // Mint tokens to the user wallet.
+    let mint_amount = TOKEN_AMOUNT;
+    let recipient = Identity::Address(user_wallet.address().into());
+
+    let admin_token_contract =
+        Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
+
+    println!("🔄 Minting {} tokens to user...", mint_amount);
+    match admin_token_contract
+        .methods()
+        .mint(recipient, Some(SUB_ID), mint_amount)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+        .call()
+        .await
+    {
+        Ok(_) => println!("✅ Mint successful"),
+        Err(e) => {
+            println!("❌ Mint failed: {:?}", e);
+            return Err(e.into());
+        }
+    };
+
+    let asset_id = admin_token_contract
+        .methods()
+        .get_asset_id()
+        .call()
+        .await?
+        .value;
+
+    let user_balance = user_wallet.get_asset_balance(&asset_id).await?;
+    println!("💰 User balance before deposit: {}", user_balance);
+
+    let initial_deposit_balance = match vault_contract
+    .methods()
+    .get_deposit(Identity::Address(user_wallet.address().into()))
+    .call()
+    .await
+{
+    Ok(response) => {
+        println!("📊 Initial deposit balance: {}", response.value);
+        response.value
+    }
+    Err(e) => {
+        println!("❌ Failed to get initial deposit balance: {:?}", e);
+        return Err(e.into());
+    }
+};
+
+    let deposit_amount: u64 = 100;
+
+    println!("🔄 Preparing deposit of {} tokens...", deposit_amount);
+
+    println!("🔄 Executing deposit with admin wallet...");
+
+    // Check if user has enough balance
+    if user_balance < deposit_amount as u128 {
+        println!(
+            "❌ User has insufficient balance: {} < {}",
+            user_balance, deposit_amount
+        );
+        return Err("Insufficient balance for deposit".into());
+    }
+
+    let call_params = CallParameters::default()
+        .with_amount(deposit_amount as u64)
+        .with_asset_id(asset_id);
+
+    match cross_contract_call_contract
+        .methods()
+        .deposit(
+            user_vault_contract.contract_id(),
+            user_wallet.address().into(),
+        )
+        .call_params(call_params)?
+        .with_contract_ids(&[user_vault_contract.contract_id().clone()])
+        .call()
+        .await
+    {
+        Ok(_) => println!("✅ Deposit successful"),
+        Err(e) => {
+            println!("❌ Deposit failed: {:?}", e);
+            return Err(e.into());
+        }
+    }
+
+
+    let final_deposit_balance = match vault_contract
+        .methods()
+        .get_deposit(Identity::Address(user_wallet.address().into()))
+        .call()
+        .await
+    {
+        Ok(response) => {
+            println!("✅ Final deposit balance: {}", response.value);
+            response.value
+        }
+        Err(e) => {
+            println!("❌ Failed to get final deposit balance: {:?}", e);
+            return Err(e.into());
+        }
+    };
+    let balance_increase = final_deposit_balance - initial_deposit_balance;
+    println!("📈 Balance increase: {} (expected: {})", balance_increase, deposit_amount);
+    
+    assert_eq!(balance_increase, deposit_amount, 
+        "Expected deposit increase of {} but got {}. Initial: {}, Final: {}", 
+        deposit_amount, balance_increase, initial_deposit_balance, final_deposit_balance);
+    
+    println!("✅ Cross Contract Call Deposit verification passed");
+
+    Ok(())
+}
+
+async fn test_vault_deposit(
     token_contract: Src20Token<Wallet<Unlocked<PrivateKeySigner>>>,
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
     vault_contract: TokenVault<Wallet<Unlocked<PrivateKeySigner>>>,
     user_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<()> {
-    println!("Starting cross-contract test...");
-    println!("🧪 Testing cross-contract calls...");
+    println!("Starting vault deposit test...");
+    println!("🧪 Testing vault deposit...");
 
     // Mint tokens to the user wallet.
     let mint_amount = TOKEN_AMOUNT;
@@ -376,12 +542,7 @@ async fn test_cross_contract_calls(
     }
 
     // Check user balance after mint
-    let asset_id = match admin_token_contract
-        .methods()
-        .get_asset_id()
-        .call()
-        .await
-    {
+    let asset_id = match admin_token_contract.methods().get_asset_id().call().await {
         Ok(response) => {
             println!("✅ Got asset ID: {:?}", response.value);
             response.value
@@ -402,7 +563,10 @@ async fn test_cross_contract_calls(
 
     // Check if user has enough balance
     if user_balance < deposit_amount {
-        println!("❌ User has insufficient balance: {} < {}", user_balance, deposit_amount);
+        println!(
+            "❌ User has insufficient balance: {} < {}",
+            user_balance, deposit_amount
+        );
         return Err("Insufficient balance for deposit".into());
     }
 
@@ -411,10 +575,10 @@ async fn test_cross_contract_calls(
         .with_asset_id(asset_id);
 
     println!("🔄 Executing deposit with user wallet...");
-    
+
     // Use user wallet for deposit, not admin wallet
     let user_vault_contract = vault_contract.clone().with_account(user_wallet.clone());
-    
+
     match user_vault_contract
         .methods()
         .deposit()
@@ -492,17 +656,19 @@ async fn test_cross_contract_calls(
         }
     };
 
-    assert_eq!(remaining_deposit, deposit_amount as u64 - withdrawal_amount as u64);
+    assert_eq!(
+        remaining_deposit,
+        deposit_amount as u64 - withdrawal_amount as u64
+    );
     println!("✅ Withdrawal verification passed");
 
     // Check final user balance
     let final_user_balance = user_wallet.get_asset_balance(&asset_id).await?;
     println!("💰 User final balance: {}", final_user_balance);
 
-    println!("✅ Cross-contract calls test passed");
+    println!("✅ Vault deposit test passed");
     Ok(())
 }
-
 
 async fn test_script_execution(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,

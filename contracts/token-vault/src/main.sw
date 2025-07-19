@@ -11,10 +11,10 @@ use std::{
 };
 
 configurable {
-    /// The contract ID of the token this vault accepts.
-    TOKEN_CONTRACT: ContractId = ContractId::zero(),
     /// The admin of the vault.
     ADMIN: Identity = Identity::Address(Address::zero()),
+    /// The contract ID of the cross-contract call contract.
+    CROSS_CONTRACT_CALL: ContractId = ContractId::zero(),
 }
 
 storage {
@@ -56,8 +56,9 @@ abi TokenVault {
     fn get_total_deposits() -> u64;
     
     /// Cross-contract transfer demonstration.
+    #[payable]
     #[storage(read, write)]
-    fn cross_contract_deposit(user: Identity, amount: u64);
+    fn cross_contract_deposit(user: Identity);
     
     /// Get the vault's balance of the accepted token.
     #[storage(read)]
@@ -131,10 +132,14 @@ impl TokenVault for Contract {
     }
     
     /// Cross-contract transfer demonstration.
+    #[payable]
     #[storage(read, write)]
-    fn cross_contract_deposit(user: Identity, amount: u64) {
-        require(msg_sender().unwrap() == ADMIN, "Only admin can cross-contract deposit");
+    fn cross_contract_deposit(user: Identity) {
+        require(CROSS_CONTRACT_CALL != ContractId::zero(), "Cross-contract call contract not set");
+        require(msg_sender().unwrap() == Identity::ContractId(CROSS_CONTRACT_CALL), "Only cross-contract call can cross-contract deposit");
         
+        let amount = msg_amount();
+        let asset_id = msg_asset_id();
         // This would typically involve calling another contract
         // For demonstration, we'll just update the deposit
         let current_deposit = storage.deposits.get(user).try_read().unwrap_or(0);
@@ -143,7 +148,12 @@ impl TokenVault for Contract {
         let new_total = storage.total_deposits.read() + amount;
         storage.total_deposits.write(new_total);
         
-        log("Cross-contract deposit completed");
+       // Log deposit event
+        log(DepositEvent {
+            user: user,
+            amount,
+            asset_id,
+        });
     }
     
     /// Get the vault's balance of the accepted token.
