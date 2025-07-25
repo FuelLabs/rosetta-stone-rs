@@ -31,13 +31,12 @@ abigen!(
     ),
 );
 
-/// Common test constants
 pub const TOKEN_AMOUNT: u64 = 1_000_000;
 pub const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 pub const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
-/// Returns a contract instance for further interaction.
+// Deploys the SRC20 token contract with the given wallet and metadata
+// Returns a contract instance for further interaction
 pub async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
@@ -74,7 +73,7 @@ pub async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Deploys the CrossContractCall contract
+// Deploys the CrossContractCall contract
 pub async fn deploy_cross_contract_call(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>> {
@@ -95,7 +94,7 @@ pub async fn deploy_cross_contract_call(
     Ok(CrossContractCall::new(contract_id, admin_wallet))
 }
 
-/// Deploys the TokenVault contract, linking it to the given token contract and admin wallet.
+// Deploys the TokenVault contract, linking it to the given token contract and admin wallet
 pub async fn deploy_token_vault(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     cross_contract_call_contract_instance: CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
