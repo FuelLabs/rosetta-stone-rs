@@ -1,10 +1,10 @@
-//! Multi Wallet Operations Tests
-//! 
-//! This module contains tests for multi-wallet interactions including:
-//! - Minting to multiple users
-//! - Token transfers between wallets
-//! - Multi-wallet balance management
-//! - Complex wallet interactions
+// Multi Wallet Operations Tests
+// 
+// This module contains tests for multi-wallet interactions including:
+// - Minting to multiple users
+// - Token transfers between wallets
+// - Multi-wallet balance management
+// - Complex wallet interactions
 
 use fuels::{
     accounts::signers::private_key::PrivateKeySigner,
@@ -22,12 +22,12 @@ abigen!(
     ),
 );
 
-/// Common test constants
+// Common test constants
 const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
+// Deploys the SRC20 token contract with the given wallet and metadata
 async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
@@ -55,7 +55,7 @@ async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Test multi-wallet interactions: minting to multiple users and transferring tokens between them.
+// Test minting tokens to multiple users and transferring between them
 #[tokio::test]
 async fn test_multi_wallet_interactions() -> Result<()> {
     println!("🧪 Testing multi-wallet interactions...");
@@ -81,19 +81,19 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         admin_wallet.clone(),
         "MULTITK",
         "MULTK",
-        6,
+        9,
     ).await?;
 
     let admin_token_contract =
         Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
-    // 🔧 FIX: Mint tokens to ALL user wallets, including the first one
+    // Mint tokens to all the users
     for (i, user_wallet) in user_wallets.iter().enumerate() {
         let amount = TOKEN_AMOUNT + (i as u64 * 1000);
         let recipient = Identity::Address(user_wallet.address().into());
 
         println!(
-            "🔄 Attempting to mint {} tokens to user {}: {:?}",
+            "🔁 Minting {} tokens to user {}: {:?}",
             amount,
             i + 1,
             recipient
@@ -120,14 +120,14 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         .await?
         .value;
 
-    // 🔧 FIX: Verify balances before transfer
+    // Verify balances before transfer
     println!("🔍 Checking balances before transfer...");
     for (i, user_wallet) in user_wallets.iter().enumerate() {
         let balance = user_wallet.get_asset_balance(&asset_id).await?;
         println!("User {} balance: {}", i + 1, balance);
     }
 
-    // Now perform the transfer
+    // Perform the transfer
     let transfer_amount = 50_000;
 
     println!("🔄 About to transfer {} tokens", transfer_amount);
@@ -135,7 +135,7 @@ async fn test_multi_wallet_interactions() -> Result<()> {
     println!("To: {} (User 2)", user_wallets[1].address());
     println!("Asset ID: {:?}", asset_id);
 
-    // 🔧 FIX: Get initial balances for proper assertion
+    // Get initial balances
     let sender_initial_balance = user_wallets[0].get_asset_balance(&asset_id).await?;
     let recipient_initial_balance = user_wallets[1].get_asset_balance(&asset_id).await?;
 
@@ -151,7 +151,7 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         );
     }
 
-    // Attempt to transfer tokens from user1 to user2
+    // Transfer tokens txn from user1 to user2
     match user_wallets[0]
         .transfer(
             user_wallets[1].address(),
@@ -180,7 +180,6 @@ async fn test_multi_wallet_interactions() -> Result<()> {
     println!("  Sender: {} (was {})", sender_final_balance, sender_initial_balance);
     println!("  Recipient: {} (was {})", recipient_final_balance, recipient_initial_balance);
 
-    // 🔧 FIX: Calculate expected balances based on initial amounts
     let expected_sender_balance = sender_initial_balance - transfer_amount as u128;
     let expected_recipient_balance = recipient_initial_balance + transfer_amount as u128;
 
@@ -205,7 +204,6 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         recipient_final_balance
     );
 
-    println!("✅ All assertions passed!");
     println!("✅ Multi-wallet interactions test completed successfully!");
 
     Ok(())

@@ -1,7 +1,6 @@
-//! Simple Token Test
-//! 
-//! This is a basic test to verify the project structure and demonstrate
-//! how to write tests for beginners.
+// Simple Token Test
+// 
+// This is a basic test to verify the project structure and demonstrate writing tests 
 
 use fuels::{
     prelude::*,
@@ -21,7 +20,7 @@ const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Simple test to verify basic token functionality
+// Test to verify basic token functionality
 #[tokio::test]
 async fn test_simple_token_operations() -> Result<()> {
     println!("🧪 Testing simple token operations...");
@@ -146,7 +145,7 @@ async fn test_simple_token_operations() -> Result<()> {
     Ok(())
 }
 
-/// Test token minting with different amounts
+// Test token minting with different amounts
 #[tokio::test]
 async fn test_token_minting_scenarios() -> Result<()> {
     println!("🧪 Testing token minting scenarios...");

@@ -1,10 +1,10 @@
-//! Advanced Patterns Tests
-//! 
-//! This module contains tests for advanced blockchain patterns including:
-//! - Block manipulation
-//! - Gas optimization
-//! - Custom transaction policies
-//! - Performance benchmarks
+// Advanced Patterns Tests
+// 
+// This module contains tests for advanced blockchain patterns including:
+// - Block manipulation
+// - Gas optimization
+// - Custom transaction policies
+// - Performance benchmarks
 
 use fuels::{
     accounts::signers::private_key::PrivateKeySigner,
@@ -14,7 +14,6 @@ use fuels::{
 
 use fuels::accounts::wallet::Unlocked;
 
-// Load abi from json
 abigen!(
     Contract(
         name = "Src20Token",
@@ -30,12 +29,11 @@ abigen!(
     ),
 );
 
-/// Common test constants
 const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
+// Deploys the SRC20 token contract with the given wallet and metadata
 async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
@@ -63,7 +61,7 @@ async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Deploys the CrossContractCall contract
+// Deploys the CrossContractCall contract
 async fn deploy_cross_contract_call(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>> {
@@ -79,7 +77,7 @@ async fn deploy_cross_contract_call(
     Ok(CrossContractCall::new(contract_id, admin_wallet))
 }
 
-/// Deploys the TokenVault contract
+// Deploys the TokenVault contract
 async fn deploy_token_vault(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     cross_contract_call_contract_instance: CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
@@ -102,7 +100,7 @@ async fn deploy_token_vault(
     Ok(TokenVault::new(contract_id, wallet))
 }
 
-/// Test advanced blockchain patterns
+// Test advanced blockchain patterns
 #[tokio::test]
 async fn test_advanced_patterns() -> Result<()> {
     println!("🧪 Testing advanced patterns...");
@@ -127,7 +125,7 @@ async fn test_advanced_patterns() -> Result<()> {
         admin_wallet.clone(),
         "ADVTOKE",
         "ADVOK",
-        6,
+        9,
     ).await?;
 
     let cross_contract_call_contract = deploy_cross_contract_call(
@@ -213,7 +211,7 @@ async fn test_advanced_patterns() -> Result<()> {
     Ok(())
 }
 
-/// Test comprehensive logging functionality
+// Test comprehensive logging functionality
 #[tokio::test]
 async fn test_comprehensive_logging() -> Result<()> {
     println!("🧪 Testing comprehensive logging...");
@@ -264,7 +262,7 @@ async fn test_comprehensive_logging() -> Result<()> {
     Ok(())
 }
 
-/// Test performance benchmarks
+// Test performance benchmarks
 #[tokio::test]
 async fn test_performance_benchmarks() -> Result<()> {
     println!("🧪 Testing performance benchmarks...");

@@ -1,10 +1,10 @@
-//! Vault Operations Tests
-//! 
-//! This module contains tests for the TokenVault contract operations including:
-//! - Vault deposits
-//! - Vault withdrawals
-//! - Vault balance checks
-//! - Admin operations
+// Vault Operations Tests
+// 
+// This module contains tests for the TokenVault contract operations including:
+// - Vault deposits
+// - Vault withdrawals
+// - Vault balance checks
+// - Admin operations
 
 use fuels::{
     accounts::signers::private_key::PrivateKeySigner,
@@ -30,12 +30,12 @@ abigen!(
     ),
 );
 
-/// Common test constants
+// Common test constants
 const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
+// Deploys the SRC20 token contract with the given wallet and metadata
 async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
@@ -63,7 +63,7 @@ async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Deploys the CrossContractCall contract
+// Deploys the CrossContractCall contract
 async fn deploy_cross_contract_call(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>> {
@@ -79,7 +79,7 @@ async fn deploy_cross_contract_call(
     Ok(CrossContractCall::new(contract_id, admin_wallet))
 }
 
-/// Deploys the TokenVault contract
+// Deploys the TokenVault contract
 async fn deploy_token_vault(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     cross_contract_call_contract_instance: CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
@@ -102,7 +102,7 @@ async fn deploy_token_vault(
     Ok(TokenVault::new(contract_id, wallet))
 }
 
-/// Test vault deposit and withdrawal functionality
+// Test vault deposit and withdrawal functionality
 #[tokio::test]
 async fn test_vault_deposit() -> Result<()> {
     println!("🧪 Testing vault deposit...");
@@ -140,7 +140,7 @@ async fn test_vault_deposit() -> Result<()> {
         cross_contract_call_contract.clone(),
     ).await?;
 
-    // Mint tokens to the user wallet.
+    // Mint tokens to the user wallet
     let mint_amount = TOKEN_AMOUNT;
     let recipient = Identity::Address(user_wallet.address().into());
 

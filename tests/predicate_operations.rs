@@ -1,10 +1,10 @@
-//! Predicate Operations Tests
-//! 
-//! This module contains tests for predicate authorization including:
-//! - Multi-signature predicates
-//! - Predicate funding
-//! - Predicate balance checks
-//! - Authorization workflows
+// Predicate Operations Tests
+// 
+// This module contains tests for predicate authorization including:
+// - Multi-signature predicates
+// - Predicate funding
+// - Predicate balance checks
+// - Authorization workflows
 
 use fuels::prelude::*;
 
@@ -13,7 +13,7 @@ abigen!(Predicate(
     abi = "predicates/multi-sig/out/debug/multi_sig_predicate-abi.json",
 ));
 
-/// Test predicate authorization functionality
+// Test predicate authorization functionality
 #[tokio::test]
 async fn test_predicate_authorization() -> Result<()> {
     println!("🧪 Testing predicate authorization...");

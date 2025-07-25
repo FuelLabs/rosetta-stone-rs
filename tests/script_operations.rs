@@ -1,6 +1,6 @@
-//! Simplified Script Operations Test
-//! 
-//! This test focuses on a single working script execution pattern
+// Simplified Script Operations Test
+// 
+// This test focuses on a single working script execution pattern
 
 use fuels::{
     accounts::signers::private_key::PrivateKeySigner,
@@ -22,12 +22,11 @@ abigen!(
     ),
 );
 
-/// Common test constants
 const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
+// Deploys the SRC20 token contract with the given wallet and metadata
 async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
@@ -55,7 +54,7 @@ async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Test simple script execution with single recipient
+// Test simple script execution
 #[tokio::test]
 async fn test_simple_script_execution() -> Result<()> {
     println!("🧪 Testing simple script execution...");
@@ -84,14 +83,14 @@ async fn test_simple_script_execution() -> Result<()> {
         admin_wallet.clone(),
         "SCRIPTK",
         "SCRIP",
-        6,
+        9,
     ).await?;
 
-    // 🔧 FIX: Use exactly 3 recipients as expected by the script
+    // Use 3 recipients as expected by the script
     let recipients = [
         Identity::Address(recipient_wallet.address().into()),
-        Identity::Address(recipient_wallet.address().into()), // Same recipient for simplicity
-        Identity::Address(recipient_wallet.address().into()), // Same recipient for simplicity
+        Identity::Address(recipient_wallet.address().into()),
+        Identity::Address(recipient_wallet.address().into()),
     ];
     let amounts = [100u64, 200u64, 300u64]; // Three amounts as expected
     let total_amount = 100 + 200 + 300; // = 600
@@ -100,7 +99,7 @@ async fn test_simple_script_execution() -> Result<()> {
         Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
     // Mint tokens to admin
-    let mint_amount = 10000u64; // Mint plenty
+    let mint_amount = 10000u64;
     println!("🔄 Minting {} tokens to admin wallet...", mint_amount);
 
     admin_token_contract
@@ -120,7 +119,7 @@ async fn test_simple_script_execution() -> Result<()> {
     let admin_balance = admin_wallet.get_asset_balance(&asset_id).await?;
     println!("💰 Admin balance after mint: {}", admin_balance);
 
-    // Configure script with single recipient
+    // Configure script
     let configurables = MultiAssetTransferConfigurables::default()
         .with_RECIPIENTS(recipients)?
         .with_AMOUNTS(amounts)?;
@@ -138,13 +137,13 @@ async fn test_simple_script_execution() -> Result<()> {
     )
     .with_configurables(configurables);
 
-    // Execute script using manual transaction building to include token inputs
+    // Execute script using manual transaction building
     println!("🚀 Executing script with manual transaction building...");
     
     let script_call = script_instance.main(asset_id);
     let mut tb = script_call.transaction_builder().await?;
 
-    // 🔧 KEY FIX: Add the token inputs to the script transaction
+    // Add the token inputs to the script transaction
     println!("🔄 Adding token inputs to script transaction...");
     let token_inputs = admin_wallet
         .get_asset_inputs_for_amount(asset_id, total_amount as u128, None)
@@ -204,7 +203,7 @@ async fn test_simple_script_execution() -> Result<()> {
                 }
             }
 
-            // Verify recipient balance (all transfers go to same wallet)
+            // Verify recipient balance
             let recipient_balance = recipient_wallet.get_asset_balance(&asset_id).await?;
             println!("💰 Recipient balance after script: {}", recipient_balance);
 

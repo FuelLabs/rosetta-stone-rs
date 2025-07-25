@@ -1,11 +1,11 @@
-//! Token Operations Tests
-//! 
-//! This module contains tests for basic SRC20 token operations including:
-//! - Token minting
-//! - Token transfers
-//! - Supply checks
-//! - Balance queries
-//! - Token metadata
+// Token Operations Tests
+
+// This module contains tests for basic SRC20 token operations including:
+// - Token minting
+// - Token transfers
+// - Supply checks
+// - Balance queries
+// - Token metadata
 
 use fuels::{
     accounts::signers::private_key::PrivateKeySigner,
@@ -23,31 +23,30 @@ abigen!(
     ),
 );
 
-/// Common test constants
 const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
-/// Returns a contract instance for further interaction.
+// Deploys the SRC20 token contract with the given wallet and metadata
+// Returns a contract instance for further interaction
 async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
     symbol: &str,
     decimals: u8,
 ) -> Result<Src20Token<Wallet<Unlocked<PrivateKeySigner>>>> {
-    // Convert name and symbol to SizedAsciiString for contract configurables.
+    // Convert name and symbol to SizedAsciiString for contract configurables
     let name_bytes: SizedAsciiString<7> = name.try_into()?;
     let symbol_bytes: SizedAsciiString<5> = symbol.try_into()?;
 
-    // Set up contract configurables (name, symbol, decimals, admin).
+    // Set up contract configurables (name, symbol, decimals, admin)
     let configurables = Src20TokenConfigurables::default()
         .with_NAME(name_bytes.clone())?
         .with_SYMBOL(symbol_bytes.clone())?
         .with_DECIMALS(decimals)?
         .with_ADMIN(Identity::Address(wallet.address().into()))?;
 
-    // Deploy the contract to the local node.
+    // Deploy the contract to the local node
     let deploy_response = Contract::load_from(
         "contracts/src20-token/out/debug/src20_token.bin",
         LoadConfiguration::default().with_configurables(configurables),
@@ -66,7 +65,7 @@ async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Test basic token operations including minting, transfers, and supply checks
+// Test basic token operations including minting, transfers, and supply checks
 #[tokio::test]
 async fn test_token_operations() -> Result<()> {
     println!("🧪 Testing token operations...");
@@ -110,7 +109,7 @@ async fn test_token_operations() -> Result<()> {
         mint_amount, recipient
     );
 
-    // Mint tokens to the recipient (user wallet).
+    // Mint tokens to the recipient (user wallet)
     let mint_tx = admin_token_contract
         .methods()
         .mint(recipient, Some(SUB_ID), mint_amount)
@@ -132,7 +131,7 @@ async fn test_token_operations() -> Result<()> {
         .await?
         .value;
 
-    // Query the total supply after minting.
+    // Query the total supply after minting
     let total_supply = token_contract
         .methods()
         .total_supply(asset_id)
@@ -142,7 +141,7 @@ async fn test_token_operations() -> Result<()> {
 
     println!("Total supply after minting: {:?}", total_supply);
 
-    // Optionally, assert the total supply matches the minted amount.
+    // Assert the total supply matches the minted amount
     assert_eq!(total_supply, Some(mint_amount));
 
     println!("✅ Token operations test passed");

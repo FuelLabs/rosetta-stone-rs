@@ -1,9 +1,9 @@
-//! Cross Contract Operations Tests
-//! 
-//! This module contains tests for cross-contract communication including:
-//! - Cross-contract calls
-//! - Contract-to-contract interactions
-//! - Multi-contract workflows
+// Cross Contract Operations Tests
+// 
+// This module contains tests for cross-contract communication including:
+// - Cross-contract calls
+// - Contract-to-contract interactions
+// - Multi-contract workflows
 
 use fuels::{
     accounts::signers::private_key::PrivateKeySigner,
@@ -29,12 +29,12 @@ abigen!(
     ),
 );
 
-/// Common test constants
+// Common test constants
 const TOKEN_AMOUNT: u64 = 1_000_000;
 const SUB_ID_ARRAY: [u8; 32] = [0u8; 32];
 const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 
-/// Deploys the SRC20 token contract with the given wallet and metadata.
+// Deploys the SRC20 token contract with the given wallet and metadata
 async fn deploy_src20_token(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     name: &str,
@@ -62,7 +62,7 @@ async fn deploy_src20_token(
     Ok(Src20Token::new(contract_id, wallet))
 }
 
-/// Deploys the CrossContractCall contract
+// Deploys the CrossContractCall contract
 async fn deploy_cross_contract_call(
     admin_wallet: Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>> {
@@ -81,7 +81,7 @@ async fn deploy_cross_contract_call(
     Ok(CrossContractCall::new(contract_id, admin_wallet))
 }
 
-/// Deploys the TokenVault contract
+// Deploys the TokenVault contract
 async fn deploy_token_vault(
     wallet: Wallet<Unlocked<PrivateKeySigner>>,
     cross_contract_call_contract_instance: &CrossContractCall<Wallet<Unlocked<PrivateKeySigner>>>,
@@ -104,7 +104,7 @@ async fn deploy_token_vault(
     Ok(TokenVault::new(contract_id, wallet))
 }
 
-/// Test cross-contract call functionality
+// Test cross-contract call functionality
 #[tokio::test]
 async fn test_cross_contract_call() -> Result<()> {
     println!("🧪 Testing cross-contract call...");
@@ -130,7 +130,7 @@ async fn test_cross_contract_call() -> Result<()> {
         admin_wallet.clone(),
         "CROSSTK",
         "CROSS",
-        6,
+        9,
     ).await?;
 
     let cross_contract_call_contract = deploy_cross_contract_call(
@@ -145,10 +145,10 @@ async fn test_cross_contract_call() -> Result<()> {
     let user_vault_contract =
         TokenVault::new(vault_contract.contract_id().clone(), user_wallet.clone());
 
-    // 🔧 FIX: Mint tokens to ADMIN wallet instead of user wallet
+    // Mint tokens to ADMIN wallet and deposit to user vault on behalf of user
     // Since the CrossContractCall requires admin authorization
     let mint_amount = TOKEN_AMOUNT;
-    let recipient = Identity::Address(admin_wallet.address().into()); // ← Changed to admin_wallet
+    let recipient = Identity::Address(admin_wallet.address().into());
 
     let admin_token_contract =
         Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
@@ -175,7 +175,7 @@ async fn test_cross_contract_call() -> Result<()> {
         .await?
         .value;
 
-    // 🔧 FIX: Check admin wallet balance instead of user wallet
+    // Check admin wallet balance
     let admin_balance = admin_wallet.get_asset_balance(&asset_id).await?;
     println!("💰 Admin balance before deposit: {}", admin_balance);
 
@@ -215,10 +215,10 @@ async fn test_cross_contract_call() -> Result<()> {
         .with_amount(deposit_amount as u64)
         .with_asset_id(asset_id);
 
-    // 🔧 FIX: The cross-contract call should work now because:
-    // 1. Admin wallet has the tokens (we minted to admin)
+
+    // 1. Admin wallet has the tokens
     // 2. Admin wallet is calling the CrossContractCall contract
-    // 3. CrossContractCall contract will forward tokens to vault for the user
+    // 3. CrossContractCall contract will forward tokens to vault for the user (user_vault_contract)
     match cross_contract_call_contract
         .methods()
         .deposit(
@@ -241,7 +241,7 @@ async fn test_cross_contract_call() -> Result<()> {
         }
     }
 
-    // Check the results
+    // Check balances after deposit
     let final_deposit_balance = match vault_contract
         .methods()
         .get_deposit(Identity::Address(user_wallet.address().into()))
@@ -268,7 +268,7 @@ async fn test_cross_contract_call() -> Result<()> {
     
     println!("✅ Cross Contract Call Deposit verification passed");
 
-    // 🔧 BONUS: Verify admin wallet balance decreased
+    // Verify admin wallet balance decreased
     let admin_balance_after = admin_wallet.get_asset_balance(&asset_id).await?;
     println!("💰 Admin balance after deposit: {}", admin_balance_after);
     
@@ -278,7 +278,7 @@ async fn test_cross_contract_call() -> Result<()> {
     Ok(())
 }
 
-// 🔧 ALTERNATIVE TEST: If you want to test with user wallet sending tokens
+// Test with user wallet sending tokens
 #[tokio::test]
 async fn test_cross_contract_call_user_sends() -> Result<()> {
     println!("🧪 Testing cross-contract call with user sending tokens...");
@@ -301,9 +301,9 @@ async fn test_cross_contract_call_user_sends() -> Result<()> {
     // Deploy contracts
     let token_contract = deploy_src20_token(
         admin_wallet.clone(),
-        "USERTOK", // ← 7 characters (already fixed)
-        "USERR",   // ← Fixed: 5 characters exactly
-        6,
+        "USERTOK",
+        "USRTK",
+        9,
     ).await?;
 
     let cross_contract_call_contract = deploy_cross_contract_call(
