@@ -105,7 +105,7 @@ async fn deploy_token_vault(
 // Test vault deposit and withdrawal functionality
 #[tokio::test]
 async fn test_vault_deposit() -> Result<()> {
-    println!("🧪 Testing vault deposit...");
+    println!("Testing vault deposit...");
 
     // Set up test wallets
     let num_wallets = 3;
@@ -144,10 +144,10 @@ async fn test_vault_deposit() -> Result<()> {
     let mint_amount = TOKEN_AMOUNT;
     let recipient = Identity::Address(user_wallet.address().into());
 
-    println!("🔄 Creating admin token contract instance...");
+    println!("Creating admin token contract instance...");
     let admin_token_contract = Src20Token::new(token_contract.contract_id().clone(), admin_wallet);
 
-    println!("🔄 Minting {} tokens to user...", mint_amount);
+    println!("Minting {} tokens to user...", mint_amount);
     match admin_token_contract
         .methods()
         .mint(recipient, Some(SUB_ID), mint_amount)
@@ -175,12 +175,12 @@ async fn test_vault_deposit() -> Result<()> {
     };
 
     let user_balance = user_wallet.get_asset_balance(&asset_id).await?;
-    println!("💰 User balance before deposit: {}", user_balance);
+    println!("User balance before deposit: {}", user_balance);
 
     // Deposit tokens into the vault
     let deposit_amount = 100_000;
 
-    println!("🔄 Preparing deposit of {} tokens...", deposit_amount);
+    println!("Preparing deposit of {} tokens...", deposit_amount);
 
     // Check if user has enough balance
     if user_balance < deposit_amount {
@@ -195,7 +195,7 @@ async fn test_vault_deposit() -> Result<()> {
         .with_amount(deposit_amount as u64)
         .with_asset_id(asset_id);
 
-    println!("🔄 Executing deposit with user wallet...");
+    println!("Executing deposit with user wallet...");
 
     // Use user wallet for deposit, not admin wallet
     let user_vault_contract = vault_contract.clone().with_account(user_wallet.clone());
@@ -215,7 +215,7 @@ async fn test_vault_deposit() -> Result<()> {
     }
 
     // Verify deposit
-    println!("🔄 Verifying deposit...");
+    println!("Verifying deposit...");
     let deposit_balance = match vault_contract
         .methods()
         .get_deposit(Identity::Address(user_wallet.address().into()))
@@ -238,7 +238,7 @@ async fn test_vault_deposit() -> Result<()> {
     // Test withdrawal
     let withdrawal_amount = 50_000;
 
-    println!("🔄 Preparing withdrawal of {} tokens...", withdrawal_amount);
+    println!("Preparing withdrawal of {} tokens...", withdrawal_amount);
 
     let withdraw_call_params = CallParameters::default().with_asset_id(asset_id);
 
@@ -260,7 +260,7 @@ async fn test_vault_deposit() -> Result<()> {
     }
 
     // Verify withdrawal
-    println!("🔄 Verifying withdrawal...");
+    println!("Verifying withdrawal...");
     let remaining_deposit = match vault_contract
         .methods()
         .get_deposit(Identity::Address(user_wallet.address().into()))
@@ -285,7 +285,7 @@ async fn test_vault_deposit() -> Result<()> {
 
     // Check final user balance
     let final_user_balance = user_wallet.get_asset_balance(&asset_id).await?;
-    println!("💰 User final balance: {}", final_user_balance);
+    println!("User final balance: {}", final_user_balance);
 
     println!("✅ Vault deposit test passed");
     Ok(())

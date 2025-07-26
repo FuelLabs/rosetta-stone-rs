@@ -1,7 +1,7 @@
-//! Common utilities and constants for integration tests
-//! 
-//! This module provides shared functionality that can be used across
-//! different test modules to avoid code duplication and improve maintainability.
+// Common utilities and constants for integration tests
+// 
+// This module provides shared functionality that can be used across
+// different test modules to avoid code duplication and improve maintainability.
 
 use fuels::{
     accounts::signers::{derivation::DEFAULT_DERIVATION_PATH, private_key::PrivateKeySigner},

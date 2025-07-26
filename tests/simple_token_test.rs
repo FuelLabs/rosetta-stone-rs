@@ -23,7 +23,7 @@ const SUB_ID: Bits256 = Bits256(SUB_ID_ARRAY);
 // Test to verify basic token functionality
 #[tokio::test]
 async fn test_simple_token_operations() -> Result<()> {
-    println!("🧪 Testing simple token operations...");
+    println!("Testing simple token operations...");
 
     // Set up test wallets
     let num_wallets = 3;
@@ -73,10 +73,10 @@ async fn test_simple_token_operations() -> Result<()> {
         .await?
         .value;
 
-    println!("📊 Asset ID: {:?}", asset_id);
+    println!("Asset ID: {:?}", asset_id);
 
     // Test 1: Check initial supply
-    println!("📊 Checking initial token supply...");
+    println!("Checking initial token supply...");
     let initial_supply = user_token_contract
         .methods()
         .total_supply(asset_id)
@@ -88,7 +88,7 @@ async fn test_simple_token_operations() -> Result<()> {
     assert_eq!(initial_supply, Some(0), "Initial supply should be 0");
 
     // Test 2: Mint tokens
-    println!("🪙 Minting tokens to admin...");
+    println!("Minting tokens to admin...");
     let mint_amount = TOKEN_AMOUNT;
     let recipient = Identity::Address(admin_wallet.address().into());
     
@@ -102,14 +102,14 @@ async fn test_simple_token_operations() -> Result<()> {
     println!("   Minted {} tokens to admin", mint_amount);
 
     // Test 3: Check admin balance
-    println!("💰 Checking admin balance...");
+    println!("Checking admin balance...");
     let admin_balance = admin_wallet.get_asset_balance(&asset_id).await?;
 
     println!("   Admin balance: {}", admin_balance);
     assert_eq!(admin_balance, mint_amount as u128, "Admin balance should match minted amount");
 
     // Test 4: Check total supply after minting
-    println!("📊 Checking total supply after minting...");
+    println!("Checking total supply after minting...");
     let total_supply = user_token_contract
         .methods()
         .total_supply(asset_id)
@@ -121,7 +121,7 @@ async fn test_simple_token_operations() -> Result<()> {
     assert_eq!(total_supply, Some(mint_amount), "Total supply should match minted amount");
 
     // Test 5: Check token metadata
-    println!("📋 Checking token metadata...");
+    println!("Checking token metadata...");
     let name = user_token_contract
         .methods()
         .name(asset_id)
@@ -148,7 +148,7 @@ async fn test_simple_token_operations() -> Result<()> {
 // Test token minting with different amounts
 #[tokio::test]
 async fn test_token_minting_scenarios() -> Result<()> {
-    println!("🧪 Testing token minting scenarios...");
+    println!("Testing token minting scenarios...");
 
     // Set up test wallets
     let num_wallets = 2;
@@ -199,7 +199,7 @@ async fn test_token_minting_scenarios() -> Result<()> {
     let mint_amounts = vec![1000, 10000, 100000, 1000000];
     
     for amount in mint_amounts {
-        println!("🪙 Minting {} tokens...", amount);
+        println!("Minting {} tokens...", amount);
         
         let recipient = Identity::Address(admin_wallet.address().into());
         

@@ -68,7 +68,7 @@ async fn deploy_src20_token(
 // Test basic token operations including minting, transfers, and supply checks
 #[tokio::test]
 async fn test_token_operations() -> Result<()> {
-    println!("🧪 Testing token operations...");
+    println!("Testing token operations...");
 
     // Set up test wallets
     let num_wallets = 3;
@@ -105,7 +105,7 @@ async fn test_token_operations() -> Result<()> {
     let recipient = Identity::Address(user_wallet.address().into());
 
     println!(
-        "🔄 Minting {} tokens to user: {:?}",
+        "Minting {} tokens to user: {:?}",
         mint_amount, recipient
     );
 

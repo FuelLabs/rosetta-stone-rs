@@ -58,7 +58,7 @@ async fn deploy_src20_token(
 // Test minting tokens to multiple users and transferring between them
 #[tokio::test]
 async fn test_multi_wallet_interactions() -> Result<()> {
-    println!("🧪 Testing multi-wallet interactions...");
+    println!("Testing multi-wallet interactions...");
 
     // Set up test wallets
     let num_wallets = 5;
@@ -92,12 +92,7 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         let amount = TOKEN_AMOUNT + (i as u64 * 1000);
         let recipient = Identity::Address(user_wallet.address().into());
 
-        println!(
-            "🔁 Minting {} tokens to user {}: {:?}",
-            amount,
-            i + 1,
-            recipient
-        );
+        println!("Minting {} tokens to user {}: {:?}", amount, i + 1, recipient);
 
         // Mint tokens to the user wallet
         let _mint_tx: fuels::programs::responses::CallResponse<()> = admin_token_contract
@@ -121,7 +116,7 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         .value;
 
     // Verify balances before transfer
-    println!("🔍 Checking balances before transfer...");
+    println!("Checking balances before transfer...");
     for (i, user_wallet) in user_wallets.iter().enumerate() {
         let balance = user_wallet.get_asset_balance(&asset_id).await?;
         println!("User {} balance: {}", i + 1, balance);
@@ -130,7 +125,7 @@ async fn test_multi_wallet_interactions() -> Result<()> {
     // Perform the transfer
     let transfer_amount = 50_000;
 
-    println!("🔄 About to transfer {} tokens", transfer_amount);
+    println!("About to transfer {} tokens", transfer_amount);
     println!("From: {} (User 1)", user_wallets[0].address());
     println!("To: {} (User 2)", user_wallets[1].address());
     println!("Asset ID: {:?}", asset_id);
@@ -139,7 +134,7 @@ async fn test_multi_wallet_interactions() -> Result<()> {
     let sender_initial_balance = user_wallets[0].get_asset_balance(&asset_id).await?;
     let recipient_initial_balance = user_wallets[1].get_asset_balance(&asset_id).await?;
 
-    println!("📊 Initial balances:");
+    println!("Initial balances:");
     println!("  Sender: {}", sender_initial_balance);
     println!("  Recipient: {}", recipient_initial_balance);
 
@@ -170,20 +165,20 @@ async fn test_multi_wallet_interactions() -> Result<()> {
         }
     }
 
-    println!("🔄 Checking balances after transfer...");
+    println!("Checking balances after transfer...");
 
     // Query balances after transfer
     let sender_final_balance = user_wallets[0].get_asset_balance(&asset_id).await?;
     let recipient_final_balance = user_wallets[1].get_asset_balance(&asset_id).await?;
 
-    println!("📊 Final balances:");
+    println!("Final balances:");
     println!("  Sender: {} (was {})", sender_final_balance, sender_initial_balance);
     println!("  Recipient: {} (was {})", recipient_final_balance, recipient_initial_balance);
 
     let expected_sender_balance = sender_initial_balance - transfer_amount as u128;
     let expected_recipient_balance = recipient_initial_balance + transfer_amount as u128;
 
-    println!("🔄 Running assertions...");
+    println!("Running assertions...");
     println!("  Expected sender balance: {}", expected_sender_balance);
     println!("  Expected recipient balance: {}", expected_recipient_balance);
 

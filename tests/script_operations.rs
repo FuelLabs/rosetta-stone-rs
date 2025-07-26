@@ -57,10 +57,10 @@ async fn deploy_src20_token(
 // Test simple script execution
 #[tokio::test]
 async fn test_simple_script_execution() -> Result<()> {
-    println!("🧪 Testing simple script execution...");
+    println!("Testing simple script execution...");
 
     // Set up test wallets
-    let num_wallets = 3;
+    let num_wallets = 4;
     let coins_per_wallet = 2;
     let amount_per_coin = 1_000_000_000;
     let config = WalletsConfig::new(
@@ -73,10 +73,14 @@ async fn test_simple_script_execution() -> Result<()> {
         .await?;
 
     let admin_wallet = wallets.pop().unwrap();
-    let recipient_wallet = wallets.pop().unwrap();
+    let recipient_wallet_1 = wallets.pop().unwrap();
+    let recipient_wallet_2 = wallets.pop().unwrap();
+    let recipient_wallet_3 = wallets.pop().unwrap();
 
-    println!("👤 Admin wallet: {}", admin_wallet.address());
-    println!("👤 Recipient wallet: {}", recipient_wallet.address());
+    println!("Admin wallet: {}", admin_wallet.address());
+    println!("Recipient wallet 1: {}", recipient_wallet_1.address());
+    println!("Recipient wallet 2: {}", recipient_wallet_2.address());
+    println!("Recipient wallet 3: {}", recipient_wallet_3.address());
 
     // Deploy the SRC20 token contract
     let token_contract = deploy_src20_token(
@@ -88,9 +92,9 @@ async fn test_simple_script_execution() -> Result<()> {
 
     // Use 3 recipients as expected by the script
     let recipients = [
-        Identity::Address(recipient_wallet.address().into()),
-        Identity::Address(recipient_wallet.address().into()),
-        Identity::Address(recipient_wallet.address().into()),
+        Identity::Address(recipient_wallet_1.address().into()),
+        Identity::Address(recipient_wallet_2.address().into()),
+        Identity::Address(recipient_wallet_3.address().into()),
     ];
     let amounts = [100u64, 200u64, 300u64]; // Three amounts as expected
     let total_amount = 100 + 200 + 300; // = 600
@@ -100,7 +104,7 @@ async fn test_simple_script_execution() -> Result<()> {
 
     // Mint tokens to admin
     let mint_amount = 10000u64;
-    println!("🔄 Minting {} tokens to admin wallet...", mint_amount);
+    println!("Minting {} tokens to admin wallet...", mint_amount);
 
     admin_token_contract
         .methods()
@@ -117,17 +121,17 @@ async fn test_simple_script_execution() -> Result<()> {
         .value;
 
     let admin_balance = admin_wallet.get_asset_balance(&asset_id).await?;
-    println!("💰 Admin balance after mint: {}", admin_balance);
+    println!("Admin balance after mint: {}", admin_balance);
 
     // Configure script
     let configurables = MultiAssetTransferConfigurables::default()
         .with_RECIPIENTS(recipients)?
         .with_AMOUNTS(amounts)?;
 
-    println!("🔧 Script configuration:");
-    println!("  Recipient 1: {} (amount: {})", recipient_wallet.address(), amounts[0]);
-    println!("  Recipient 2: {} (amount: {})", recipient_wallet.address(), amounts[1]);
-    println!("  Recipient 3: {} (amount: {})", recipient_wallet.address(), amounts[2]);
+    println!("Script configuration:");
+    println!("  Recipient 1: {} (amount: {})", recipient_wallet_1.address(), amounts[0]);
+    println!("  Recipient 2: {} (amount: {})", recipient_wallet_2.address(), amounts[1]);
+    println!("  Recipient 3: {} (amount: {})", recipient_wallet_3.address(), amounts[2]);
     println!("  Total amount: {}", total_amount);
 
     // Create script instance
@@ -138,18 +142,18 @@ async fn test_simple_script_execution() -> Result<()> {
     .with_configurables(configurables);
 
     // Execute script using manual transaction building
-    println!("🚀 Executing script with manual transaction building...");
+    println!("Executing script with manual transaction building...");
     
     let script_call = script_instance.main(asset_id);
     let mut tb = script_call.transaction_builder().await?;
 
     // Add the token inputs to the script transaction
-    println!("🔄 Adding token inputs to script transaction...");
+    println!("Adding token inputs to script transaction...");
     let token_inputs = admin_wallet
         .get_asset_inputs_for_amount(asset_id, total_amount as u128, None)
         .await?;
     
-    println!("📦 Found {} token inputs for script", token_inputs.len());
+    println!("Found {} token inputs for script", token_inputs.len());
     for (i, input) in token_inputs.iter().enumerate() {
         println!("  Input {}: {:?}", i + 1, input);
     }
@@ -172,7 +176,7 @@ async fn test_simple_script_execution() -> Result<()> {
     admin_wallet.adjust_for_fee(&mut tb, 0).await?;
     admin_wallet.add_witnesses(&mut tb)?;
 
-    println!("🔍 Transaction builder state:");
+    println!("Transaction builder state:");
     println!("  - Inputs: {}", tb.inputs.len());
     println!("  - Outputs: {}", tb.outputs.len());
     println!("  - Witnesses: {}", tb.witnesses.len());
@@ -182,44 +186,61 @@ async fn test_simple_script_execution() -> Result<()> {
     let tx = tb.build(&provider).await?;
     let tx_id = provider.send_transaction(tx).await?;
     
-    println!("📋 Transaction sent: {:?}", tx_id);
+    println!("Transaction sent: {:?}", tx_id);
     
     // Wait for result
     let tx_status = provider.tx_status(&tx_id).await?;
-    println!("📋 Transaction status: {:?}", tx_status);
+    println!("Transaction status: {:?}", tx_status);
 
     match tx_status {
         TxStatus::Success { .. } => {
             println!("✅ Script executed successfully!");
             
             let response = script_call.get_response(tx_status)?;
-            println!("📋 Script returned: {}", response.value);
+            println!("Script returned: {}", response.value);
             // Check logs
             let logs = response.decode_logs();
             if !logs.results.is_empty() {
-                println!("📋 Script logs:");
+                println!("Script logs:");
                 for (i, log) in logs.results.iter().enumerate() {
                     println!("  Log {}: {:?}", i + 1, log);
                 }
             }
 
-            // Verify recipient balance
-            let recipient_balance = recipient_wallet.get_asset_balance(&asset_id).await?;
-            println!("💰 Recipient balance after script: {}", recipient_balance);
+            // Verify recipient balances
+            let recipient_1_balance = recipient_wallet_1.get_asset_balance(&asset_id).await?;
+            let recipient_2_balance = recipient_wallet_2.get_asset_balance(&asset_id).await?;
+            let recipient_3_balance = recipient_wallet_3.get_asset_balance(&asset_id).await?;
+            
+            println!("Recipient 1 balance after script: {}", recipient_1_balance);
+            println!("Recipient 2 balance after script: {}", recipient_2_balance);
+            println!("Recipient 3 balance after script: {}", recipient_3_balance);
 
-            let expected_total = amounts[0] + amounts[1] + amounts[2];
-            if recipient_balance >= expected_total as u128 {
-                println!("✅ Recipient received all tokens successfully! (Expected: {}, Got: {})", expected_total, recipient_balance);
+            // Verify each recipient received their expected amount
+            if recipient_1_balance >= amounts[0] as u128 {
+                println!("✅ Recipient 1 received tokens successfully! (Expected: {}, Got: {})", amounts[0], recipient_1_balance);
             } else {
-                println!("⚠️  Recipient balance lower than expected (Expected: {}, Got: {})", expected_total, recipient_balance);
+                println!("❌ Recipient 1 balance lower than expected (Expected: {}, Got: {})", amounts[0], recipient_1_balance);
+            }
+            
+            if recipient_2_balance >= amounts[1] as u128 {
+                println!("✅ Recipient 2 received tokens successfully! (Expected: {}, Got: {})", amounts[1], recipient_2_balance);
+            } else {
+                println!("❌ Recipient 2 balance lower than expected (Expected: {}, Got: {})", amounts[1], recipient_2_balance);
+            }
+            
+            if recipient_3_balance >= amounts[2] as u128 {
+                println!("✅ Recipient 3 received tokens successfully! (Expected: {}, Got: {})", amounts[2], recipient_3_balance);
+            } else {
+                println!("❌ Recipient 3 balance lower than expected (Expected: {}, Got: {})", amounts[2], recipient_3_balance);
             }
 
             // Verify admin balance decreased
             let admin_balance_after = admin_wallet.get_asset_balance(&asset_id).await?;
-            println!("💰 Admin balance after script: {}", admin_balance_after);
+            println!("Admin balance after script: {}", admin_balance_after);
             
             let balance_decrease = admin_balance - admin_balance_after;
-            println!("📉 Admin balance decreased by: {}", balance_decrease);
+            println!("Admin balance decreased by: {}", balance_decrease);
 
             println!("✅ Simple script execution test passed!");
         }

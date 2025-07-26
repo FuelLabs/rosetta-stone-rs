@@ -107,7 +107,7 @@ async fn deploy_token_vault(
 // Test cross-contract call functionality
 #[tokio::test]
 async fn test_cross_contract_call() -> Result<()> {
-    println!("🧪 Testing cross-contract call...");
+    println!("Testing cross-contract call...");
 
     // Set up test wallets
     let num_wallets = 3;
@@ -153,7 +153,7 @@ async fn test_cross_contract_call() -> Result<()> {
     let admin_token_contract =
         Src20Token::new(token_contract.contract_id().clone(), admin_wallet.clone());
 
-    println!("🔄 Minting {} tokens to admin wallet...", mint_amount);
+    println!("Minting {} tokens to admin wallet...", mint_amount);
     match admin_token_contract
         .methods()
         .mint(recipient, Some(SUB_ID), mint_amount)
@@ -177,7 +177,7 @@ async fn test_cross_contract_call() -> Result<()> {
 
     // Check admin wallet balance
     let admin_balance = admin_wallet.get_asset_balance(&asset_id).await?;
-    println!("💰 Admin balance before deposit: {}", admin_balance);
+    println!("Admin balance before deposit: {}", admin_balance);
 
     let initial_deposit_balance = match vault_contract
         .methods()
@@ -186,7 +186,7 @@ async fn test_cross_contract_call() -> Result<()> {
         .await
     {
         Ok(response) => {
-            println!("📊 Initial deposit balance for user: {}", response.value);
+            println!("Initial deposit balance for user: {}", response.value);
             response.value
         }
         Err(e) => {
@@ -197,8 +197,8 @@ async fn test_cross_contract_call() -> Result<()> {
 
     let deposit_amount: u64 = 100;
 
-    println!("🔄 Preparing deposit of {} tokens...", deposit_amount);
-    println!("🔄 Executing cross-contract deposit...");
+    println!("Preparing deposit of {} tokens...", deposit_amount);
+    println!("Executing cross-contract deposit...");
     println!("  From: Admin wallet ({})", admin_wallet.address());
     println!("  To: User ({}) via cross-contract call", user_wallet.address());
 
@@ -259,7 +259,7 @@ async fn test_cross_contract_call() -> Result<()> {
     };
 
     let balance_increase = final_deposit_balance - initial_deposit_balance;
-    println!("📈 Balance increase: {} (expected: {})", balance_increase, deposit_amount);
+    println!("Balance increase: {} (expected: {})", balance_increase, deposit_amount);
     
     // Verify the cross-contract deposit worked
     assert_eq!(balance_increase, deposit_amount, 
@@ -270,10 +270,10 @@ async fn test_cross_contract_call() -> Result<()> {
 
     // Verify admin wallet balance decreased
     let admin_balance_after = admin_wallet.get_asset_balance(&asset_id).await?;
-    println!("💰 Admin balance after deposit: {}", admin_balance_after);
+    println!("Admin balance after deposit: {}", admin_balance_after);
     
     let admin_balance_decrease = admin_balance - admin_balance_after;
-    println!("📉 Admin balance decrease: {} (expected: {})", admin_balance_decrease, deposit_amount);
+    println!("Admin balance decrease: {} (expected: {})", admin_balance_decrease, deposit_amount);
 
     Ok(())
 }
@@ -281,7 +281,7 @@ async fn test_cross_contract_call() -> Result<()> {
 // Test with user wallet sending tokens
 #[tokio::test]
 async fn test_cross_contract_call_user_sends() -> Result<()> {
-    println!("🧪 Testing cross-contract call with user sending tokens...");
+    println!("Testing cross-contract call with user sending tokens...");
 
     let num_wallets = 3;
     let coins_per_wallet = 2;
