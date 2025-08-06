@@ -44,6 +44,7 @@ abi TokenVault {
     fn deposit();
     
     /// Withdraw tokens from the vault.
+    #[payable]
     #[storage(read, write)]
     fn withdraw(amount: u64);
     
@@ -94,6 +95,7 @@ impl TokenVault for Contract {
     }
     
     /// Withdraw tokens from the vault.
+    #[payable]
     #[storage(read, write)]
     fn withdraw(amount: u64) {
         let sender = msg_sender().unwrap();
