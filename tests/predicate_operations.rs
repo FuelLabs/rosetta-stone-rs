@@ -52,6 +52,13 @@ async fn test_predicate_authorization() -> Result<()> {
 
     // Fund predicate
     let fund_amount = 500_000;
+    let initial_balance = provider.get_asset_balance(&signer1.address(), &AssetId::default()).await?;
+    
+    println!("  Initial balances (authorization test):");
+    println!("  Signer1 balance: {}", initial_balance);
+    println!("  Predicate balance: 0");
+    println!("  Funding predicate with {} tokens...", fund_amount);
+    
     signer1
         .transfer(
             predicate.address(),
@@ -63,6 +70,13 @@ async fn test_predicate_authorization() -> Result<()> {
 
     // Verify predicate balance
     let predicate_balance = predicate.get_asset_balance(&AssetId::default()).await?;
+    let final_signer1_balance = provider.get_asset_balance(&signer1.address(), &AssetId::default()).await?;
+    
+    println!("  After funding predicate:");
+    println!("  Signer1 balance: {} (was: {})", final_signer1_balance, initial_balance);
+    println!("  Predicate balance: {}", predicate_balance);
+    println!("  Transfer fee: {}", initial_balance - final_signer1_balance - fund_amount as u128);
+    
     assert_eq!(predicate_balance, fund_amount as u128);
 
     println!("✅ Predicate authorization test completed");
@@ -109,7 +123,7 @@ async fn test_predicate_spending_2_of_3() -> Result<()> {
     let fund_amount = 500_000;
     let initial_balance = provider.get_asset_balance(&signer1.address(), &asset_id).await?;
     
-    println!("📊 Initial balances:");
+    println!("  Initial balances:");
     println!("  Signer1 balance: {}", initial_balance);
     println!("  Predicate balance: 0");
     println!("  Funding predicate with {} tokens...", fund_amount);
@@ -127,7 +141,7 @@ async fn test_predicate_spending_2_of_3() -> Result<()> {
     let predicate_balance = provider.get_asset_balance(&predicate.address(), &asset_id).await?;
     let signer1_balance_after_funding = provider.get_asset_balance(&signer1.address(), &asset_id).await?;
     
-    println!("📊 After funding predicate:");
+    println!("  After funding predicate:");
     println!("  Signer1 balance: {}", signer1_balance_after_funding);
     println!("  Predicate balance: {}", predicate_balance);
     println!("  Transfer fee: {}", initial_balance - signer1_balance_after_funding - fund_amount as u128);
@@ -138,7 +152,7 @@ async fn test_predicate_spending_2_of_3() -> Result<()> {
     let spend_amount = 300_000;
     let gas_amount = 1; // Reserve some for gas
     
-    println!("📊 Before spending from predicate:");
+    println!("  Before spending from predicate:");
     println!("  Predicate balance: {}", provider.get_asset_balance(&predicate.address(), &asset_id).await?);
     println!("  Signer1 balance: {}", provider.get_asset_balance(&signer1.address(), &asset_id).await?);
     println!("  Spending {} tokens (reserving {} for gas)...", spend_amount, gas_amount);
@@ -174,7 +188,7 @@ async fn test_predicate_spending_2_of_3() -> Result<()> {
     let final_predicate_balance = provider.get_asset_balance(&predicate.address(), &asset_id).await?;
     let final_signer1_balance = provider.get_asset_balance(&signer1.address(), &asset_id).await?;
     
-    println!("📊 After spending from predicate:");
+    println!("  After spending from predicate:");
     println!("  Predicate balance: {} (was: {})", final_predicate_balance, fund_amount);
     println!("  Signer1 balance: {} (was: {})", final_signer1_balance, signer1_balance_after_funding);
     println!("  Amount spent: {}", spend_amount);
@@ -225,6 +239,13 @@ async fn test_predicate_spending_insufficient_signatures() -> Result<()> {
 
     // Fund predicate
     let fund_amount = 500_000;
+    let initial_balance = provider.get_asset_balance(&signer1.address(), &asset_id).await?;
+    
+    println!("  Initial balances (insufficient signatures test):");
+    println!("  Signer1 balance: {}", initial_balance);
+    println!("  Predicate balance: 0");
+    println!("  Funding predicate with {} tokens...", fund_amount);
+    
     signer1
         .transfer(
             predicate.address(),
@@ -237,6 +258,11 @@ async fn test_predicate_spending_insufficient_signatures() -> Result<()> {
     // Build transaction to spend from predicate
     let spend_amount = 300_000;
     let gas_amount = 1;
+    
+    println!("  Before attempting to spend (insufficient signatures):");
+    println!("  Predicate balance: {}", provider.get_asset_balance(&predicate.address(), &asset_id).await?);
+    println!("  Signer1 balance: {}", provider.get_asset_balance(&signer1.address(), &asset_id).await?);
+    println!("  Attempting to spend {} tokens with only 1 signature...", spend_amount);
     
     let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
     let output_coin = predicate.get_asset_outputs_for_amount(
@@ -252,18 +278,28 @@ async fn test_predicate_spending_insufficient_signatures() -> Result<()> {
     );
 
     // Add fees and witnesses from only one signer (insufficient for 2/3 requirement)
+    println!("  Adding signature from only one signer (insufficient for 2/3 requirement)...");
     signer1.adjust_for_fee(&mut transaction_builder, 0).await?;
     signer1.add_witnesses(&mut transaction_builder)?;
 
     // Build transaction
+    println!("  Building transaction with insufficient signatures...");
     let transaction = transaction_builder.build(provider.clone()).await?;
     
     // Attempt to send transaction - should fail
+    println!("❌ Attempting to execute transaction (should fail due to insufficient signatures)...");
     let result = provider.send_transaction_and_await_commit(transaction).await;
     assert!(result.is_err());
+    println!("✅ Transaction correctly failed due to insufficient signatures");
 
     // Verify predicate balance remains unchanged
     let final_predicate_balance = provider.get_asset_balance(&predicate.address(), &asset_id).await?;
+    let final_signer1_balance = provider.get_asset_balance(&signer1.address(), &asset_id).await?;
+    
+    println!("  After failed transaction attempt:");
+    println!("  Predicate balance: {} (unchanged)", final_predicate_balance);
+    println!("  Signer1 balance: {} (unchanged)", final_signer1_balance);
+    
     assert_eq!(final_predicate_balance, fund_amount as u128);
 
     println!("✅ Predicate insufficient signatures test completed successfully");
